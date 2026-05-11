@@ -1,0 +1,25 @@
+# ── Dependências Node ────────────────────────────────
+node_modules/
+
+# ── Cobertura de testes (gerada pelo Jest) ────────────
+coverage/
+
+# ── Logs ─────────────────────────────────────────────
+*.log
+npm-debug.log*
+
+# ── Sistemas operacionais ─────────────────────────────
+.DS_Store          # macOS
+Thumbs.db          # Windows
+desktop.ini        # Windows
+
+# ── Editores e IDEs ───────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.user
+
+# ── Variáveis de ambiente (nunca suba isso!) ──────────
+.env
+.env.local
+.env.production
