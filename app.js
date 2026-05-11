@@ -1,28 +1,59 @@
 /* =====================================================
    FINANCE CONTROL SYSTEM — app.js
-   Lógica: storage, validação, cadastro, remoção,
-           relatório, stats, views, toast, modal
+   Storage: Supabase (PostgreSQL)
    ===================================================== */
 
-// ─── Storage (localStorage) ───────────────────────────────────────────────
+// ─── Configuração Supabase ────────────────────────────────────────────────
+// Substitua os valores abaixo com os do seu projeto:
+// Project Settings → API → Project URL e anon public key
 
-const CHAVE = 'fcs_gastos';
+const SUPABASE_URL  = 'https://dbljvtkfsemexvyyotjl.supabase.co';
+const SUPABASE_ANON = 'sb_publishable_YT9HentLvdJFZEIx7sO5QQ_sg6KLtRj';
+const TABELA        = 'gastos';
 
-function carregarDados() {
-  try {
-    return JSON.parse(localStorage.getItem(CHAVE)) || [];
-  } catch {
-    return [];
-  }
+const headers = {
+  'Content-Type':  'application/json',
+  'apikey':        SUPABASE_ANON,
+  'Authorization': `Bearer ${SUPABASE_ANON}`,
+};
+
+// ─── API Supabase (funções de acesso ao banco) ────────────────────────────
+
+async function dbBuscarTodos() {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/${TABELA}?select=*&order=id.asc`,
+    { headers }
+  );
+  if (!res.ok) throw new Error('Erro ao buscar gastos.');
+  return res.json();
 }
 
-function salvarDados(lista) {
-  localStorage.setItem(CHAVE, JSON.stringify(lista));
+async function dbInserir(gasto) {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/${TABELA}`,
+    {
+      method:  'POST',
+      headers: { ...headers, 'Prefer': 'return=representation' },
+      body:    JSON.stringify(gasto),
+    }
+  );
+  if (!res.ok) throw new Error('Erro ao cadastrar gasto.');
+  const dados = await res.json();
+  return dados[0]; // retorna o registro com id gerado pelo banco
 }
 
-// Estado global
-let historico      = carregarDados();
-let indiceRemover  = null;
+async function dbRemover(id) {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/${TABELA}?id=eq.${id}`,
+    { method: 'DELETE', headers }
+  );
+  if (!res.ok) throw new Error('Erro ao remover gasto.');
+}
+
+// ─── Estado global ────────────────────────────────────────────────────────
+
+let historico = []; // espelho local do banco
+let idRemover = null; // id do registro aguardando confirmação de remoção
 
 // ─── Validação ────────────────────────────────────────────────────────────
 
@@ -57,13 +88,12 @@ function setError(id, msg) {
 
 // ─── Cadastro ─────────────────────────────────────────────────────────────
 
-function salvarGasto() {
+async function salvarGasto() {
   const nome   = document.getElementById('inp-nome').value;
   const valor  = document.getElementById('inp-valor').value;
   const classe = document.getElementById('inp-classe').value;
   const data   = document.getElementById('inp-data').value;
 
-  // Validar todos os campos
   const eNome   = validarNome(nome);
   const eValor  = validarValor(valor);
   const eClasse = validarClasse(classe);
@@ -80,23 +110,31 @@ function salvarGasto() {
   const [y, m, d] = data.split('-');
   const dataBR = `${d}/${m}/${y}`;
 
-  historico.push({
+  const novoGasto = {
     nome:   nome.trim(),
     valor:  parseFloat(parseFloat(valor).toFixed(2)),
     classe: classe.trim(),
     data:   dataBR,
-  });
+  };
 
-  salvarDados(historico);
-  atualizarStats();
+  setBloqueado(true);
+  try {
+    const registrado = await dbInserir(novoGasto);
+    historico.push(registrado);
+    atualizarStats();
 
-  // Limpar formulário
-  document.getElementById('inp-nome').value   = '';
-  document.getElementById('inp-valor').value  = '';
-  document.getElementById('inp-classe').value = '';
-  document.getElementById('inp-data').value   = '';
+    document.getElementById('inp-nome').value   = '';
+    document.getElementById('inp-valor').value  = '';
+    document.getElementById('inp-classe').value = '';
+    document.getElementById('inp-data').value   = '';
 
-  showToast(`✔ "${nome.trim()}" cadastrado com sucesso!`, 'success');
+    showToast(`✔ "${nome.trim()}" cadastrado com sucesso!`, 'success');
+  } catch (err) {
+    showToast('Erro ao salvar. Verifique sua conexão.', 'danger');
+    console.error(err);
+  } finally {
+    setBloqueado(false);
+  }
 }
 
 // ─── Remoção ──────────────────────────────────────────────────────────────
@@ -113,7 +151,7 @@ function renderListaRemover() {
     return;
   }
 
-  cont.innerHTML = historico.map((g, i) => `
+  cont.innerHTML = historico.map(g => `
     <div class="report-card">
       <div class="report-row">
         <div>
@@ -121,35 +159,46 @@ function renderListaRemover() {
           <div class="report-meta">${escHtml(g.classe)} &nbsp;·&nbsp; ${g.data}</div>
         </div>
         <div style="display:flex; align-items:center; gap:14px">
-          <span class="val-cell">R$ ${formatVal(g.valor)}</span>
-          <button class="btn-remove" onclick="abrirModal(${i})">✕ Remover</button>
+          <span class="val-cell">R$ ${formatVal(Number(g.valor))}</span>
+          <button class="btn-remove" onclick="abrirModal(${g.id}, '${escHtml(g.nome)}')">✕ Remover</button>
         </div>
       </div>
     </div>
   `).join('');
 }
 
-function abrirModal(i) {
-  indiceRemover = i;
-  document.getElementById('modal-nome').textContent = historico[i].nome;
+function abrirModal(id, nome) {
+  idRemover = id;
+  document.getElementById('modal-nome').textContent = nome;
   document.getElementById('modal-overlay').classList.add('open');
 }
 
 function fecharModal() {
-  indiceRemover = null;
+  idRemover = null;
   document.getElementById('modal-overlay').classList.remove('open');
 }
 
-function confirmarRemocao() {
-  if (indiceRemover === null) return;
+async function confirmarRemocao() {
+  if (idRemover === null) return;
 
-  const nome = historico[indiceRemover].nome;
-  historico.splice(indiceRemover, 1);
-  salvarDados(historico);
-  fecharModal();
-  renderListaRemover();
-  atualizarStats();
-  showToast(`✔ "${nome}" removido com sucesso!`, 'danger');
+  const gasto = historico.find(g => g.id === idRemover);
+  const nome  = gasto?.nome ?? '';
+
+  setBloqueado(true);
+  try {
+    await dbRemover(idRemover);
+    historico = historico.filter(g => g.id !== idRemover);
+    fecharModal();
+    renderListaRemover();
+    atualizarStats();
+    showToast(`✔ "${nome}" removido com sucesso!`, 'danger');
+  } catch (err) {
+    showToast('Erro ao remover. Verifique sua conexão.', 'danger');
+    console.error(err);
+    fecharModal();
+  } finally {
+    setBloqueado(false);
+  }
 }
 
 // ─── Relatório ────────────────────────────────────────────────────────────
@@ -173,25 +222,25 @@ function renderRelatorio() {
   totRow.style.display = 'flex';
   empty.style.display  = 'none';
 
-  const total      = historico.reduce((s, g) => s + g.valor, 0);
+  const total = historico.reduce((s, g) => s + Number(g.valor), 0);
   totVal.textContent = `R$ ${formatVal(total)}`;
 
   tbody.innerHTML = historico.map(g => `
     <tr>
       <td>${escHtml(g.nome)}</td>
-      <td><span class="val-cell">R$ ${formatVal(g.valor)}</span></td>
+      <td><span class="val-cell">R$ ${formatVal(Number(g.valor))}</span></td>
       <td><span class="tag-class">${escHtml(g.classe)}</span></td>
       <td style="color:var(--text-muted); font-size:13px;">${g.data}</td>
     </tr>
   `).join('');
 }
 
-// ─── Stats (barra superior) ───────────────────────────────────────────────
+// ─── Stats ────────────────────────────────────────────────────────────────
 
 function atualizarStats() {
-  const total  = historico.reduce((s, g) => s + g.valor, 0);
+  const total  = historico.reduce((s, g) => s + Number(g.valor), 0);
   const maxVal = historico.length
-    ? Math.max(...historico.map(g => g.valor))
+    ? Math.max(...historico.map(g => Number(g.valor)))
     : 0;
 
   document.getElementById('stat-total').textContent = `R$ ${formatVal(total)}`;
@@ -212,6 +261,16 @@ function showView(view, btn) {
   if (view === 'relatorio') renderRelatorio();
 }
 
+// ─── Loading (bloqueia UI durante chamadas ao banco) ──────────────────────
+
+function setBloqueado(estado) {
+  document.querySelectorAll('button, input').forEach(el => {
+    el.disabled = estado;
+  });
+  const btn = document.querySelector('.btn-primary');
+  if (btn) btn.textContent = estado ? '⟳  Aguarde...' : '⬡   Cadastrar Gasto';
+}
+
 // ─── Toast ────────────────────────────────────────────────────────────────
 
 let toastTimer;
@@ -221,13 +280,13 @@ function showToast(msg, type = '') {
   t.textContent = msg;
   t.className   = 'toast' + (type ? ' ' + type : '') + ' show';
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
 }
 
-// ─── Utilitários ─────────────────────────────────────────────────────────
+// ─── Utilitários ──────────────────────────────────────────────────────────
 
 function formatVal(n) {
-  return n.toLocaleString('pt-BR', {
+  return Number(n).toLocaleString('pt-BR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -240,20 +299,35 @@ function escHtml(s) {
     .replace(/>/g, '&gt;');
 }
 
-// ─── Event Listeners ─────────────────────────────────────────────────────
+// ─── Event Listeners ──────────────────────────────────────────────────────
 
-// Enter em qualquer campo do formulário dispara o cadastro
 ['inp-nome', 'inp-valor', 'inp-classe', 'inp-data'].forEach(id => {
   document.getElementById(id).addEventListener('keydown', e => {
     if (e.key === 'Enter') salvarGasto();
   });
 });
 
-// Fechar modal clicando no overlay
 document.getElementById('modal-overlay').addEventListener('click', function (e) {
   if (e.target === this) fecharModal();
 });
 
 // ─── Inicialização ────────────────────────────────────────────────────────
 
-atualizarStats();
+async function init() {
+  // Mostra loading nas stats enquanto carrega do banco
+  ['stat-total', 'stat-max'].forEach(id => {
+    document.getElementById(id).textContent = 'R$ ...';
+  });
+  document.getElementById('stat-count').textContent = '...';
+
+  try {
+    historico = await dbBuscarTodos();
+    atualizarStats();
+  } catch (err) {
+    showToast('Erro ao carregar dados. Verifique sua conexão.', 'danger');
+    console.error(err);
+    atualizarStats();
+  }
+}
+
+init();
