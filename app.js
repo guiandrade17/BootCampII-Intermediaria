@@ -1,30 +1,215 @@
 /* =====================================================
    FINANCE CONTROL SYSTEM — app.js
-   Lógica: storage, validação, cadastro, remoção,
-           relatório, stats, views, toast, modal
+   Auth + Storage: Supabase
    ===================================================== */
 
-// ─── Storage (localStorage) ───────────────────────────────────────────────
+// ─── Configuração Supabase ────────────────────────────
+const SUPABASE_URL  = 'https://dbljvtkfsemexvyyotjl.supabase.co';
+const SUPABASE_ANON = 'sb_publishable_YT9HentLvdJFZEIx7sO5QQ_sg6KLtRj';
+const TABELA        = 'gastos';
 
-const CHAVE = 'fcs_gastos';
+// Token de sessão do usuário logado
+let tokenSessao = null;
 
-function carregarDados() {
+// Headers base (sem auth — usados só no login/cadastro)
+const headersBase = {
+  'Content-Type': 'application/json',
+  'apikey':       SUPABASE_ANON,
+};
+
+// Headers autenticados (usados em todas as operações de dados)
+function headersAuth() {
+  return {
+    ...headersBase,
+    'Authorization': `Bearer ${tokenSessao}`,
+  };
+}
+
+// ─── Estado global ────────────────────────────────────
+let historico = [];
+let idRemover = null;
+
+// ═══════════════════════════════════════════════════════
+// AUTENTICAÇÃO
+// ═══════════════════════════════════════════════════════
+
+// Troca entre abas Login / Criar Conta
+function trocarAba(aba, btn) {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('form-' + aba).classList.add('active');
+  limparErrosAuth();
+}
+
+function limparErrosAuth() {
+  ['err-login-email','err-login-senha','err-login-geral',
+   'err-reg-email','err-reg-senha','err-reg-confirma','err-reg-geral']
+    .forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '';
+    });
+}
+
+// ── Login ─────────────────────────────────────────────
+async function fazerLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const senha = document.getElementById('login-senha').value;
+
+  let valido = true;
+  if (!email) { setError('err-login-email', 'Informe seu e-mail.'); valido = false; }
+  if (!senha)  { setError('err-login-senha', 'Informe sua senha.');  valido = false; }
+  if (!valido) return;
+
+  setBloqueadoAuth(true);
   try {
-    return JSON.parse(localStorage.getItem(CHAVE)) || [];
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method:  'POST',
+      headers: headersBase,
+      body:    JSON.stringify({ email, password: senha }),
+    });
+
+    const dados = await res.json();
+
+    if (!res.ok) {
+      const msg = dados.error_description || dados.msg || 'E-mail ou senha incorretos.';
+      setError('err-login-geral', msg);
+      return;
+    }
+
+    tokenSessao = dados.access_token;
+    entrarNoApp(dados.user.email);
+
   } catch {
-    return [];
+    setError('err-login-geral', 'Erro de conexão. Tente novamente.');
+  } finally {
+    setBloqueadoAuth(false);
   }
 }
 
-function salvarDados(lista) {
-  localStorage.setItem(CHAVE, JSON.stringify(lista));
+// ── Criar Conta ───────────────────────────────────────
+async function fazerCadastro() {
+  const email    = document.getElementById('reg-email').value.trim();
+  const senha    = document.getElementById('reg-senha').value;
+  const confirma = document.getElementById('reg-confirma').value;
+
+  let valido = true;
+  if (!email)              { setError('err-reg-email',    'Informe um e-mail.');        valido = false; }
+  if (senha.length < 6)    { setError('err-reg-senha',    'Mínimo 6 caracteres.');      valido = false; }
+  if (senha !== confirma)  { setError('err-reg-confirma', 'As senhas não coincidem.');  valido = false; }
+  if (!valido) return;
+
+  setBloqueadoAuth(true);
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+      method:  'POST',
+      headers: headersBase,
+      body:    JSON.stringify({ email, password: senha }),
+    });
+
+    const dados = await res.json();
+
+    if (!res.ok) {
+      const msg = dados.error_description || dados.msg || 'Erro ao criar conta.';
+      setError('err-reg-geral', msg);
+      return;
+    }
+
+    // Supabase pode exigir confirmação de e-mail
+    if (dados.access_token) {
+      tokenSessao = dados.access_token;
+      entrarNoApp(dados.user.email);
+    } else {
+      setError('err-reg-geral', '');
+      // Mostra mensagem de confirmação e volta pra aba de login
+      document.getElementById('err-reg-geral').style.color = 'var(--success)';
+      setError('err-reg-geral', '✔ Conta criada! Verifique seu e-mail para confirmar.');
+    }
+
+  } catch {
+    setError('err-reg-geral', 'Erro de conexão. Tente novamente.');
+  } finally {
+    setBloqueadoAuth(false);
+  }
 }
 
-// Estado global
-let historico      = carregarDados();
-let indiceRemover  = null;
+// ── Logout ────────────────────────────────────────────
+async function fazerLogout() {
+  try {
+    await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+      method:  'POST',
+      headers: { ...headersBase, 'Authorization': `Bearer ${tokenSessao}` },
+    });
+  } catch { /* ignora erros de rede no logout */ }
 
-// ─── Validação ────────────────────────────────────────────────────────────
+  tokenSessao = null;
+  historico   = [];
+
+  document.getElementById('tela-app').style.display  = 'none';
+  document.getElementById('tela-auth').style.display = 'flex';
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-senha').value = '';
+}
+
+// ── Entrar no app após login bem-sucedido ─────────────
+async function entrarNoApp(email) {
+  document.getElementById('tela-auth').style.display = 'none';
+  document.getElementById('tela-app').style.display  = 'block';
+  document.getElementById('user-email-display').textContent = email;
+
+  // Carrega os gastos do usuário logado
+  ['stat-total', 'stat-max'].forEach(id => {
+    document.getElementById(id).textContent = 'R$ ...';
+  });
+  document.getElementById('stat-count').textContent = '...';
+
+  try {
+    historico = await dbBuscarTodos();
+    atualizarStats();
+  } catch {
+    showToast('Erro ao carregar dados.', 'danger');
+    atualizarStats();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// API SUPABASE — OPERAÇÕES DE DADOS
+// ═══════════════════════════════════════════════════════
+
+async function dbBuscarTodos() {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/${TABELA}?select=*&order=id.asc`,
+    { headers: { ...headersAuth(), 'apikey': SUPABASE_ANON } }
+  );
+  if (!res.ok) throw new Error('Erro ao buscar gastos.');
+  return res.json();
+}
+
+async function dbInserir(gasto) {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/${TABELA}`,
+    {
+      method:  'POST',
+      headers: { ...headersAuth(), 'apikey': SUPABASE_ANON, 'Prefer': 'return=representation' },
+      body:    JSON.stringify(gasto),
+    }
+  );
+  if (!res.ok) throw new Error('Erro ao cadastrar gasto.');
+  const dados = await res.json();
+  return dados[0];
+}
+
+async function dbRemover(id) {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/${TABELA}?id=eq.${id}`,
+    { method: 'DELETE', headers: { ...headersAuth(), 'apikey': SUPABASE_ANON } }
+  );
+  if (!res.ok) throw new Error('Erro ao remover gasto.');
+}
+
+// ═══════════════════════════════════════════════════════
+// VALIDAÇÃO
+// ═══════════════════════════════════════════════════════
 
 function validarNome(v) {
   if (!v || v.trim().length === 0) return 'Informe um nome válido.';
@@ -55,15 +240,16 @@ function setError(id, msg) {
   if (el) el.textContent = msg;
 }
 
-// ─── Cadastro ─────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// GASTOS — CADASTRO
+// ═══════════════════════════════════════════════════════
 
-function salvarGasto() {
+async function salvarGasto() {
   const nome   = document.getElementById('inp-nome').value;
   const valor  = document.getElementById('inp-valor').value;
   const classe = document.getElementById('inp-classe').value;
   const data   = document.getElementById('inp-data').value;
 
-  // Validar todos os campos
   const eNome   = validarNome(nome);
   const eValor  = validarValor(valor);
   const eClasse = validarClasse(classe);
@@ -76,30 +262,39 @@ function salvarGasto() {
 
   if (eNome || eValor || eClasse || eData) return;
 
-  // Converter data de YYYY-MM-DD para DD/MM/YYYY
   const [y, m, d] = data.split('-');
   const dataBR = `${d}/${m}/${y}`;
 
-  historico.push({
+  // user_id é preenchido automaticamente pelo Supabase via auth.uid()
+  const novoGasto = {
     nome:   nome.trim(),
     valor:  parseFloat(parseFloat(valor).toFixed(2)),
     classe: classe.trim(),
     data:   dataBR,
-  });
+  };
 
-  salvarDados(historico);
-  atualizarStats();
+  setBloqueado(true);
+  try {
+    const registrado = await dbInserir(novoGasto);
+    historico.push(registrado);
+    atualizarStats();
 
-  // Limpar formulário
-  document.getElementById('inp-nome').value   = '';
-  document.getElementById('inp-valor').value  = '';
-  document.getElementById('inp-classe').value = '';
-  document.getElementById('inp-data').value   = '';
+    document.getElementById('inp-nome').value   = '';
+    document.getElementById('inp-valor').value  = '';
+    document.getElementById('inp-classe').value = '';
+    document.getElementById('inp-data').value   = '';
 
-  showToast(`✔ "${nome.trim()}" cadastrado com sucesso!`, 'success');
+    showToast(`✔ "${nome.trim()}" cadastrado com sucesso!`, 'success');
+  } catch {
+    showToast('Erro ao salvar. Verifique sua conexão.', 'danger');
+  } finally {
+    setBloqueado(false);
+  }
 }
 
-// ─── Remoção ──────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// GASTOS — REMOÇÃO
+// ═══════════════════════════════════════════════════════
 
 function renderListaRemover() {
   const cont = document.getElementById('lista-remover');
@@ -113,7 +308,7 @@ function renderListaRemover() {
     return;
   }
 
-  cont.innerHTML = historico.map((g, i) => `
+  cont.innerHTML = historico.map(g => `
     <div class="report-card">
       <div class="report-row">
         <div>
@@ -121,38 +316,50 @@ function renderListaRemover() {
           <div class="report-meta">${escHtml(g.classe)} &nbsp;·&nbsp; ${g.data}</div>
         </div>
         <div style="display:flex; align-items:center; gap:14px">
-          <span class="val-cell">R$ ${formatVal(g.valor)}</span>
-          <button class="btn-remove" onclick="abrirModal(${i})">✕ Remover</button>
+          <span class="val-cell">R$ ${formatVal(Number(g.valor))}</span>
+          <button class="btn-remove" onclick="abrirModal(${g.id}, '${escHtml(g.nome)}')">✕ Remover</button>
         </div>
       </div>
     </div>
   `).join('');
 }
 
-function abrirModal(i) {
-  indiceRemover = i;
-  document.getElementById('modal-nome').textContent = historico[i].nome;
+function abrirModal(id, nome) {
+  idRemover = id;
+  document.getElementById('modal-nome').textContent = nome;
   document.getElementById('modal-overlay').classList.add('open');
 }
 
 function fecharModal() {
-  indiceRemover = null;
+  idRemover = null;
   document.getElementById('modal-overlay').classList.remove('open');
 }
 
-function confirmarRemocao() {
-  if (indiceRemover === null) return;
+async function confirmarRemocao() {
+  if (idRemover === null) return;
 
-  const nome = historico[indiceRemover].nome;
-  historico.splice(indiceRemover, 1);
-  salvarDados(historico);
-  fecharModal();
-  renderListaRemover();
-  atualizarStats();
-  showToast(`✔ "${nome}" removido com sucesso!`, 'danger');
+  const gasto = historico.find(g => g.id === idRemover);
+  const nome  = gasto?.nome ?? '';
+
+  setBloqueado(true);
+  try {
+    await dbRemover(idRemover);
+    historico = historico.filter(g => g.id !== idRemover);
+    fecharModal();
+    renderListaRemover();
+    atualizarStats();
+    showToast(`✔ "${nome}" removido com sucesso!`, 'danger');
+  } catch {
+    showToast('Erro ao remover. Verifique sua conexão.', 'danger');
+    fecharModal();
+  } finally {
+    setBloqueado(false);
+  }
 }
 
-// ─── Relatório ────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// RELATÓRIO E STATS
+// ═══════════════════════════════════════════════════════
 
 function renderRelatorio() {
   const tbody  = document.getElementById('tbody-relatorio');
@@ -173,47 +380,56 @@ function renderRelatorio() {
   totRow.style.display = 'flex';
   empty.style.display  = 'none';
 
-  const total      = historico.reduce((s, g) => s + g.valor, 0);
+  const total = historico.reduce((s, g) => s + Number(g.valor), 0);
   totVal.textContent = `R$ ${formatVal(total)}`;
 
   tbody.innerHTML = historico.map(g => `
     <tr>
       <td>${escHtml(g.nome)}</td>
-      <td><span class="val-cell">R$ ${formatVal(g.valor)}</span></td>
+      <td><span class="val-cell">R$ ${formatVal(Number(g.valor))}</span></td>
       <td><span class="tag-class">${escHtml(g.classe)}</span></td>
       <td style="color:var(--text-muted); font-size:13px;">${g.data}</td>
     </tr>
   `).join('');
 }
 
-// ─── Stats (barra superior) ───────────────────────────────────────────────
-
 function atualizarStats() {
-  const total  = historico.reduce((s, g) => s + g.valor, 0);
-  const maxVal = historico.length
-    ? Math.max(...historico.map(g => g.valor))
-    : 0;
+  const total  = historico.reduce((s, g) => s + Number(g.valor), 0);
+  const maxVal = historico.length ? Math.max(...historico.map(g => Number(g.valor))) : 0;
 
   document.getElementById('stat-total').textContent = `R$ ${formatVal(total)}`;
   document.getElementById('stat-count').textContent = historico.length;
   document.getElementById('stat-max').textContent   = `R$ ${formatVal(maxVal)}`;
 }
 
-// ─── Navegação entre views ────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// NAVEGAÇÃO E UI
+// ═══════════════════════════════════════════════════════
 
 function showView(view, btn) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-
   document.getElementById('view-' + view).classList.add('active');
   btn.classList.add('active');
-
   if (view === 'remover')   renderListaRemover();
   if (view === 'relatorio') renderRelatorio();
 }
 
-// ─── Toast ────────────────────────────────────────────────────────────────
+function setBloqueado(estado) {
+  document.querySelectorAll('#tela-app button, #tela-app input').forEach(el => {
+    el.disabled = estado;
+  });
+  const btn = document.querySelector('.btn-primary');
+  if (btn) btn.textContent = estado ? '⟳  Aguarde...' : '⬡   Cadastrar Gasto';
+}
 
+function setBloqueadoAuth(estado) {
+  document.querySelectorAll('#tela-auth button, #tela-auth input').forEach(el => {
+    el.disabled = estado;
+  });
+}
+
+// ─── Toast ────────────────────────────────────────────
 let toastTimer;
 
 function showToast(msg, type = '') {
@@ -221,13 +437,12 @@ function showToast(msg, type = '') {
   t.textContent = msg;
   t.className   = 'toast' + (type ? ' ' + type : '') + ' show';
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
 }
 
-// ─── Utilitários ─────────────────────────────────────────────────────────
-
+// ─── Utilitários ──────────────────────────────────────
 function formatVal(n) {
-  return n.toLocaleString('pt-BR', {
+  return Number(n).toLocaleString('pt-BR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -240,20 +455,27 @@ function escHtml(s) {
     .replace(/>/g, '&gt;');
 }
 
-// ─── Event Listeners ─────────────────────────────────────────────────────
+// ─── Event Listeners ──────────────────────────────────
 
-// Enter em qualquer campo do formulário dispara o cadastro
+// Enter no formulário de gastos
 ['inp-nome', 'inp-valor', 'inp-classe', 'inp-data'].forEach(id => {
-  document.getElementById(id).addEventListener('keydown', e => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('keydown', e => {
     if (e.key === 'Enter') salvarGasto();
   });
 });
 
-// Fechar modal clicando no overlay
+// Enter nos campos de login
+document.getElementById('login-senha').addEventListener('keydown', e => {
+  if (e.key === 'Enter') fazerLogin();
+});
+
+// Enter nos campos de cadastro de conta
+document.getElementById('reg-confirma').addEventListener('keydown', e => {
+  if (e.key === 'Enter') fazerCadastro();
+});
+
+// Fechar modal clicando fora
 document.getElementById('modal-overlay').addEventListener('click', function (e) {
   if (e.target === this) fecharModal();
 });
-
-// ─── Inicialização ────────────────────────────────────────────────────────
-
-atualizarStats();
