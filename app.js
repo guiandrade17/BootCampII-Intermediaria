@@ -4,8 +4,9 @@
    ===================================================== */
 
 // ─── Configuração Supabase ────────────────────────────
-const SUPABASE_URL  = 'https://dbljvtkfsemexvyyotjl.supabase.co';
-const SUPABASE_ANON = 'sb_publishable_YT9HentLvdJFZEIx7sO5QQ_sg6KLtRj';
+// Credenciais vêm do config.js (ignorado pelo .gitignore)
+const SUPABASE_URL  = CONFIG.SUPABASE_URL;
+const SUPABASE_ANON = CONFIG.SUPABASE_ANON;
 const TABELA        = 'gastos';
 
 // Token de sessão do usuário logado

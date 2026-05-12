@@ -1,3 +1,6 @@
+# ── Credenciais (NUNCA subir pro GitHub!) ────────────
+config.js
+
 # ── Dependências Node ────────────────────────────────
 node_modules/
 
