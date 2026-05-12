@@ -1,28 +1,185 @@
 /* =====================================================
    FINANCE CONTROL SYSTEM — app.js
-   Storage: Supabase (PostgreSQL)
+   Auth + Storage: Supabase
    ===================================================== */
 
-// ─── Configuração Supabase ────────────────────────────────────────────────
-// Substitua os valores abaixo com os do seu projeto:
-// Project Settings → API → Project URL e anon public key
-
+// ─── Configuração Supabase ────────────────────────────
 const SUPABASE_URL  = 'https://dbljvtkfsemexvyyotjl.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_YT9HentLvdJFZEIx7sO5QQ_sg6KLtRj';
 const TABELA        = 'gastos';
 
-const headers = {
-  'Content-Type':  'application/json',
-  'apikey':        SUPABASE_ANON,
-  'Authorization': `Bearer ${SUPABASE_ANON}`,
+// Token de sessão do usuário logado
+let tokenSessao = null;
+
+// Headers base (sem auth — usados só no login/cadastro)
+const headersBase = {
+  'Content-Type': 'application/json',
+  'apikey':       SUPABASE_ANON,
 };
 
-// ─── API Supabase (funções de acesso ao banco) ────────────────────────────
+// Headers autenticados (usados em todas as operações de dados)
+function headersAuth() {
+  return {
+    ...headersBase,
+    'Authorization': `Bearer ${tokenSessao}`,
+  };
+}
+
+// ─── Estado global ────────────────────────────────────
+let historico = [];
+let idRemover = null;
+
+// ═══════════════════════════════════════════════════════
+// AUTENTICAÇÃO
+// ═══════════════════════════════════════════════════════
+
+// Troca entre abas Login / Criar Conta
+function trocarAba(aba, btn) {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('form-' + aba).classList.add('active');
+  limparErrosAuth();
+}
+
+function limparErrosAuth() {
+  ['err-login-email','err-login-senha','err-login-geral',
+   'err-reg-email','err-reg-senha','err-reg-confirma','err-reg-geral']
+    .forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '';
+    });
+}
+
+// ── Login ─────────────────────────────────────────────
+async function fazerLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const senha = document.getElementById('login-senha').value;
+
+  let valido = true;
+  if (!email) { setError('err-login-email', 'Informe seu e-mail.'); valido = false; }
+  if (!senha)  { setError('err-login-senha', 'Informe sua senha.');  valido = false; }
+  if (!valido) return;
+
+  setBloqueadoAuth(true);
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method:  'POST',
+      headers: headersBase,
+      body:    JSON.stringify({ email, password: senha }),
+    });
+
+    const dados = await res.json();
+
+    if (!res.ok) {
+      const msg = dados.error_description || dados.msg || 'E-mail ou senha incorretos.';
+      setError('err-login-geral', msg);
+      return;
+    }
+
+    tokenSessao = dados.access_token;
+    entrarNoApp(dados.user.email);
+
+  } catch {
+    setError('err-login-geral', 'Erro de conexão. Tente novamente.');
+  } finally {
+    setBloqueadoAuth(false);
+  }
+}
+
+// ── Criar Conta ───────────────────────────────────────
+async function fazerCadastro() {
+  const email    = document.getElementById('reg-email').value.trim();
+  const senha    = document.getElementById('reg-senha').value;
+  const confirma = document.getElementById('reg-confirma').value;
+
+  let valido = true;
+  if (!email)              { setError('err-reg-email',    'Informe um e-mail.');        valido = false; }
+  if (senha.length < 6)    { setError('err-reg-senha',    'Mínimo 6 caracteres.');      valido = false; }
+  if (senha !== confirma)  { setError('err-reg-confirma', 'As senhas não coincidem.');  valido = false; }
+  if (!valido) return;
+
+  setBloqueadoAuth(true);
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+      method:  'POST',
+      headers: headersBase,
+      body:    JSON.stringify({ email, password: senha }),
+    });
+
+    const dados = await res.json();
+
+    if (!res.ok) {
+      const msg = dados.error_description || dados.msg || 'Erro ao criar conta.';
+      setError('err-reg-geral', msg);
+      return;
+    }
+
+    // Supabase pode exigir confirmação de e-mail
+    if (dados.access_token) {
+      tokenSessao = dados.access_token;
+      entrarNoApp(dados.user.email);
+    } else {
+      setError('err-reg-geral', '');
+      // Mostra mensagem de confirmação e volta pra aba de login
+      document.getElementById('err-reg-geral').style.color = 'var(--success)';
+      setError('err-reg-geral', '✔ Conta criada! Verifique seu e-mail para confirmar.');
+    }
+
+  } catch {
+    setError('err-reg-geral', 'Erro de conexão. Tente novamente.');
+  } finally {
+    setBloqueadoAuth(false);
+  }
+}
+
+// ── Logout ────────────────────────────────────────────
+async function fazerLogout() {
+  try {
+    await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+      method:  'POST',
+      headers: { ...headersBase, 'Authorization': `Bearer ${tokenSessao}` },
+    });
+  } catch { /* ignora erros de rede no logout */ }
+
+  tokenSessao = null;
+  historico   = [];
+
+  document.getElementById('tela-app').style.display  = 'none';
+  document.getElementById('tela-auth').style.display = 'flex';
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-senha').value = '';
+}
+
+// ── Entrar no app após login bem-sucedido ─────────────
+async function entrarNoApp(email) {
+  document.getElementById('tela-auth').style.display = 'none';
+  document.getElementById('tela-app').style.display  = 'block';
+  document.getElementById('user-email-display').textContent = email;
+
+  // Carrega os gastos do usuário logado
+  ['stat-total', 'stat-max'].forEach(id => {
+    document.getElementById(id).textContent = 'R$ ...';
+  });
+  document.getElementById('stat-count').textContent = '...';
+
+  try {
+    historico = await dbBuscarTodos();
+    atualizarStats();
+  } catch {
+    showToast('Erro ao carregar dados.', 'danger');
+    atualizarStats();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// API SUPABASE — OPERAÇÕES DE DADOS
+// ═══════════════════════════════════════════════════════
 
 async function dbBuscarTodos() {
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/${TABELA}?select=*&order=id.asc`,
-    { headers }
+    { headers: { ...headersAuth(), 'apikey': SUPABASE_ANON } }
   );
   if (!res.ok) throw new Error('Erro ao buscar gastos.');
   return res.json();
@@ -33,29 +190,26 @@ async function dbInserir(gasto) {
     `${SUPABASE_URL}/rest/v1/${TABELA}`,
     {
       method:  'POST',
-      headers: { ...headers, 'Prefer': 'return=representation' },
+      headers: { ...headersAuth(), 'apikey': SUPABASE_ANON, 'Prefer': 'return=representation' },
       body:    JSON.stringify(gasto),
     }
   );
   if (!res.ok) throw new Error('Erro ao cadastrar gasto.');
   const dados = await res.json();
-  return dados[0]; // retorna o registro com id gerado pelo banco
+  return dados[0];
 }
 
 async function dbRemover(id) {
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/${TABELA}?id=eq.${id}`,
-    { method: 'DELETE', headers }
+    { method: 'DELETE', headers: { ...headersAuth(), 'apikey': SUPABASE_ANON } }
   );
   if (!res.ok) throw new Error('Erro ao remover gasto.');
 }
 
-// ─── Estado global ────────────────────────────────────────────────────────
-
-let historico = []; // espelho local do banco
-let idRemover = null; // id do registro aguardando confirmação de remoção
-
-// ─── Validação ────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// VALIDAÇÃO
+// ═══════════════════════════════════════════════════════
 
 function validarNome(v) {
   if (!v || v.trim().length === 0) return 'Informe um nome válido.';
@@ -86,7 +240,9 @@ function setError(id, msg) {
   if (el) el.textContent = msg;
 }
 
-// ─── Cadastro ─────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// GASTOS — CADASTRO
+// ═══════════════════════════════════════════════════════
 
 async function salvarGasto() {
   const nome   = document.getElementById('inp-nome').value;
@@ -106,10 +262,10 @@ async function salvarGasto() {
 
   if (eNome || eValor || eClasse || eData) return;
 
-  // Converter data de YYYY-MM-DD para DD/MM/YYYY
   const [y, m, d] = data.split('-');
   const dataBR = `${d}/${m}/${y}`;
 
+  // user_id é preenchido automaticamente pelo Supabase via auth.uid()
   const novoGasto = {
     nome:   nome.trim(),
     valor:  parseFloat(parseFloat(valor).toFixed(2)),
@@ -129,15 +285,16 @@ async function salvarGasto() {
     document.getElementById('inp-data').value   = '';
 
     showToast(`✔ "${nome.trim()}" cadastrado com sucesso!`, 'success');
-  } catch (err) {
+  } catch {
     showToast('Erro ao salvar. Verifique sua conexão.', 'danger');
-    console.error(err);
   } finally {
     setBloqueado(false);
   }
 }
 
-// ─── Remoção ──────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// GASTOS — REMOÇÃO
+// ═══════════════════════════════════════════════════════
 
 function renderListaRemover() {
   const cont = document.getElementById('lista-remover');
@@ -192,16 +349,17 @@ async function confirmarRemocao() {
     renderListaRemover();
     atualizarStats();
     showToast(`✔ "${nome}" removido com sucesso!`, 'danger');
-  } catch (err) {
+  } catch {
     showToast('Erro ao remover. Verifique sua conexão.', 'danger');
-    console.error(err);
     fecharModal();
   } finally {
     setBloqueado(false);
   }
 }
 
-// ─── Relatório ────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// RELATÓRIO E STATS
+// ═══════════════════════════════════════════════════════
 
 function renderRelatorio() {
   const tbody  = document.getElementById('tbody-relatorio');
@@ -235,44 +393,43 @@ function renderRelatorio() {
   `).join('');
 }
 
-// ─── Stats ────────────────────────────────────────────────────────────────
-
 function atualizarStats() {
   const total  = historico.reduce((s, g) => s + Number(g.valor), 0);
-  const maxVal = historico.length
-    ? Math.max(...historico.map(g => Number(g.valor)))
-    : 0;
+  const maxVal = historico.length ? Math.max(...historico.map(g => Number(g.valor))) : 0;
 
   document.getElementById('stat-total').textContent = `R$ ${formatVal(total)}`;
   document.getElementById('stat-count').textContent = historico.length;
   document.getElementById('stat-max').textContent   = `R$ ${formatVal(maxVal)}`;
 }
 
-// ─── Navegação entre views ────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// NAVEGAÇÃO E UI
+// ═══════════════════════════════════════════════════════
 
 function showView(view, btn) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-
   document.getElementById('view-' + view).classList.add('active');
   btn.classList.add('active');
-
   if (view === 'remover')   renderListaRemover();
   if (view === 'relatorio') renderRelatorio();
 }
 
-// ─── Loading (bloqueia UI durante chamadas ao banco) ──────────────────────
-
 function setBloqueado(estado) {
-  document.querySelectorAll('button, input').forEach(el => {
+  document.querySelectorAll('#tela-app button, #tela-app input').forEach(el => {
     el.disabled = estado;
   });
   const btn = document.querySelector('.btn-primary');
   if (btn) btn.textContent = estado ? '⟳  Aguarde...' : '⬡   Cadastrar Gasto';
 }
 
-// ─── Toast ────────────────────────────────────────────────────────────────
+function setBloqueadoAuth(estado) {
+  document.querySelectorAll('#tela-auth button, #tela-auth input').forEach(el => {
+    el.disabled = estado;
+  });
+}
 
+// ─── Toast ────────────────────────────────────────────
 let toastTimer;
 
 function showToast(msg, type = '') {
@@ -283,8 +440,7 @@ function showToast(msg, type = '') {
   toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
 }
 
-// ─── Utilitários ──────────────────────────────────────────────────────────
-
+// ─── Utilitários ──────────────────────────────────────
 function formatVal(n) {
   return Number(n).toLocaleString('pt-BR', {
     minimumFractionDigits: 2,
@@ -299,35 +455,27 @@ function escHtml(s) {
     .replace(/>/g, '&gt;');
 }
 
-// ─── Event Listeners ──────────────────────────────────────────────────────
+// ─── Event Listeners ──────────────────────────────────
 
+// Enter no formulário de gastos
 ['inp-nome', 'inp-valor', 'inp-classe', 'inp-data'].forEach(id => {
-  document.getElementById(id).addEventListener('keydown', e => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('keydown', e => {
     if (e.key === 'Enter') salvarGasto();
   });
 });
 
+// Enter nos campos de login
+document.getElementById('login-senha').addEventListener('keydown', e => {
+  if (e.key === 'Enter') fazerLogin();
+});
+
+// Enter nos campos de cadastro de conta
+document.getElementById('reg-confirma').addEventListener('keydown', e => {
+  if (e.key === 'Enter') fazerCadastro();
+});
+
+// Fechar modal clicando fora
 document.getElementById('modal-overlay').addEventListener('click', function (e) {
   if (e.target === this) fecharModal();
 });
-
-// ─── Inicialização ────────────────────────────────────────────────────────
-
-async function init() {
-  // Mostra loading nas stats enquanto carrega do banco
-  ['stat-total', 'stat-max'].forEach(id => {
-    document.getElementById(id).textContent = 'R$ ...';
-  });
-  document.getElementById('stat-count').textContent = '...';
-
-  try {
-    historico = await dbBuscarTodos();
-    atualizarStats();
-  } catch (err) {
-    showToast('Erro ao carregar dados. Verifique sua conexão.', 'danger');
-    console.error(err);
-    atualizarStats();
-  }
-}
-
-init();
