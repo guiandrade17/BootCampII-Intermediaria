@@ -1,5 +1,7 @@
 {
-  "name": "finance-control",
+  "name": "finance-control-system",
+  "version": "1.0.0",
+  "description": "Sistema de controle de gastos pessoais",
   "scripts": {
     "test": "jest"
   },

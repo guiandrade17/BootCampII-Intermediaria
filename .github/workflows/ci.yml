@@ -1,0 +1,42 @@
+# =====================================================
+# Finance Control System — CI Pipeline
+# Roda os testes automaticamente a cada push ou PR
+# =====================================================
+
+name: CI — Testes Automatizados
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  testes:
+    name: Rodar Testes Jest
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Baixa o código do repositório
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      # 2. Configura o Node.js
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      # 3. Instala as dependências (jest)
+      - name: Instalar dependências
+        run: npm ci
+
+      # 4. Roda os testes
+      - name: Rodar testes
+        run: npm test
+
+      # 5. Exibe resumo do resultado
+      - name: Resumo dos testes
+        if: always()
+        run: echo "Pipeline finalizada — verifique os resultados acima."
