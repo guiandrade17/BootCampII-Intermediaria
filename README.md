@@ -59,9 +59,7 @@ npm install
 # Nesse projeto, coloquei a url do supabase e a anon key no próprio app.js por necessidade, mas pode ser criado um arquivo (config.js, por exemplo) e nele adicionar as keys e só fazer a integração com o js, por meio de variáveis.
 
 # 4. Abra o index.html com o Live Server no VS Code
-```
 
-```bash
 # Adicional 
 #> ⚠️ O arquivo `config.js` não deve ser mandado para repositório por segurança — ele contém as credenciais do Supabase e está listado no `.gitignore`. Use o `config.example.js` como modelo.
 ```
