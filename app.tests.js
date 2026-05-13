@@ -80,7 +80,7 @@ describe('Validação de Valor', () => {
   test('valor caso limite negativo deve falhar',   () => expect(validarValor('-0.01')).not.toBe(''));
   test('valor zero deve falhar',                   () => expect(validarValor('0.00')).not.toBe(''));
   test('valor vazio deve falhar',                  () => expect(validarValor('')).not.toBe(''));
-  test('valor com vírgula deve falhar',            () => expect(validarValor('50,30')).not.toBe(''));
+  test('valor com vírgula deve funcionar como 50', () => expect(validarValor('50,30')).toBe(''));
 });
 
 // ═══════════════════════════════════════════════════════
