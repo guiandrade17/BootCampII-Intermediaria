@@ -5,5 +5,5 @@ Convertido de python para HTML, CSS E JS.
 
 # PROJETO!
 
-https://kyon-s2.github.io/BootCampII-Intermedi-ria/
+https://kyon-s2.github.io/BootCampII-Intermediaria/
 
