@@ -914,3 +914,183 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
   header h1            { font-size: 16px; }
   .auth-box            { padding: 28px 20px; }
 }
+/* ───────────────────────────────────────────────────────
+   INTEGRAÇÃO: FUNCIONALIDADE DE LIMITE DE GASTOS (BUDGET)
+   ─────────────────────────────────────────────────────── */
+
+/* Painel de configuração do limite */
+.limit-config-box {
+  margin: 20px 0;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px dashed #333;
+  border-radius: 4px;
+}
+.limit-config-box label {
+  font-size: 11px;
+  color: #ffa500; 
+  letter-spacing: 1.5px;
+  display: block;
+  margin-bottom: 8px;
+  font-family: monospace;
+}
+.limit-input-group {
+  display: flex;
+  gap: 10px;
+}
+.limit-input-group input {
+  background: #070708;
+  border: 1px solid #222;
+  color: #fff;
+  padding: 8px;
+  font-family: monospace;
+  flex: 1;
+}
+.limit-input-group input:focus {
+  outline: none;
+  border-color: #ffa500;
+}
+.limit-input-group button {
+  background: transparent;
+  border: 1px solid #ffa500;
+  color: #ffa500;
+  cursor: pointer;
+  padding: 8px 15px;
+  font-size: 11px;
+  font-family: monospace;
+  transition: all 0.2s ease;
+}
+.limit-input-group button:hover {
+  background: rgba(255, 165, 0, 0.1);
+  box-shadow: 0 0 8px rgba(255, 165, 0, 0.3);
+}
+
+/* ─── Estados de Alerta dos Cards ─── */
+
+/* Alerta Amarelo/Laranja (Gasto >= 80%) */
+.stat-card.alerta-atencao {
+  border-color: #ff9900 !important;
+  box-shadow: 0 0 12px rgba(255, 153, 0, 0.25) !important;
+}
+.stat-card.alerta-atencao .stat-val {
+  color: #ff9900 !important;
+  text-shadow: 0 0 6px rgba(255, 153, 0, 0.6) !important;
+}
+
+/* Alerta Vermelho Pulsante (Gasto >= 100%) */
+.stat-card.alerta-critico {
+  border-color: #ff003c !important;
+  animation: pulso-alarme-cyber 1.5s infinite alternate !important;
+}
+.stat-card.alerta-critico .stat-val {
+  color: #ff003c !important;
+  text-shadow: 0 0 10px rgba(255, 0, 60, 0.8) !important;
+}
+
+/* Animação do Alarme Crítico */
+@keyframes pulso-alarme-cyber {
+  0% {
+    box-shadow: 0 0 4px rgba(255, 0, 60, 0.2);
+    background: rgba(255, 0, 60, 0.02);
+  }
+  100% {
+    box-shadow: 0 0 18px rgba(255, 0, 60, 0.5);
+    background: rgba(255, 0, 60, 0.08);
+  }
+}
+
+/* ─── Ganhos ──────────────────────────────────────────── */
+.nav-btn-ganho {
+  border-color: rgba(0, 255, 136, 0.3);
+  color: var(--success);
+}
+
+.nav-btn-ganho:hover,
+.nav-btn-ganho.active {
+  background: rgba(0, 255, 136, 0.08);
+  border-color: var(--success);
+  color: var(--success);
+  box-shadow: 0 0 12px rgba(0, 255, 136, 0.2);
+}
+
+.nav-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.08);
+  margin: 8px 0;
+}
+
+.stat-card-balanco {
+  border-color: rgba(0, 255, 136, 0.2);
+}
+
+.val-ganho {
+  color: var(--success) !important;
+}
+
+.badge-fixo {
+  display: inline-block;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  padding: 2px 6px;
+  background: rgba(0, 255, 136, 0.12);
+  color: var(--success);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: 2px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.btn-ganho {
+  background: linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,255,136,0.05));
+  border-color: var(--success);
+  color: var(--success);
+  box-shadow: 0 0 20px rgba(0,255,136,0.15);
+}
+
+.btn-ganho:hover {
+  background: linear-gradient(135deg, rgba(0,255,136,0.25), rgba(0,255,136,0.1));
+  box-shadow: 0 0 30px rgba(0,255,136,0.25);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  padding: 8px 0;
+}
+
+.checkbox-label input[type="checkbox"] {
+  display: none;
+}
+
+.checkbox-custom {
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(0, 255, 136, 0.4);
+  background: transparent;
+  display: inline-block;
+  position: relative;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkbox-custom {
+  background: rgba(0, 255, 136, 0.2);
+  border-color: var(--success);
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkbox-custom::after {
+  content: '✔';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 10px;
+  color: var(--success);
+}
