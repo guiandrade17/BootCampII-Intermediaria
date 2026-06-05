@@ -27,8 +27,10 @@ function headersAuth() {
 
 // ─── Estado global ────────────────────────────────────
 let historico = [];
+let historicoGanhos = [];
 let idRemover = null;
 let idEditar  = null; // ID do gasto em edição
+let limiteMensal = 0;
 
 // ═══════════════════════════════════════════════════════
 // AUTENTICAÇÃO
@@ -145,6 +147,7 @@ async function fazerLogout() {
 
   tokenSessao = null;
   historico   = [];
+  historicoGanhos = [];
 
   document.getElementById('tela-app').style.display  = 'none';
   document.getElementById('tela-auth').style.display = 'flex';
@@ -157,6 +160,7 @@ async function entrarNoApp(email) {
   document.getElementById('tela-auth').style.display = 'none';
   document.getElementById('tela-app').style.display  = 'block';
   document.getElementById('user-email-display').textContent = email;
+  carregarLimiteSalvo();
 
   // Carrega os gastos do usuário logado
   ['stat-total', 'stat-max'].forEach(id => {
@@ -165,7 +169,10 @@ async function entrarNoApp(email) {
   document.getElementById('stat-count').textContent = '...';
 
   try {
-    historico = await dbBuscarTodos();
+    [historico, historicoGanhos] = await Promise.all([
+      dbBuscarTodos(),
+      dbBuscarGanhos(),
+    ]);
     atualizarStats();
   } catch {
     showToast('Erro ao carregar dados.', 'danger');
@@ -208,22 +215,36 @@ async function dbRemover(id) {
   if (!res.ok) throw new Error('Erro ao remover gasto.');
 }
 
-async function dbAtualizar(id, gasto) {
+// ─── Ganhos ───────────────────────────────────────────
+async function dbBuscarGanhos() {
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/${TABELA}?id=eq.${id}`,
+    `${SUPABASE_URL}/rest/v1/ganhos?select=*&order=id.asc`,
+    { headers: { ...headersAuth(), 'apikey': SUPABASE_ANON } }
+  );
+  if (!res.ok) throw new Error('Erro ao buscar ganhos.');
+  return res.json();
+}
+
+async function dbInserirGanho(ganho) {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/ganhos`,
     {
-      method:  'PATCH',
+      method:  'POST',
       headers: { ...headersAuth(), 'apikey': SUPABASE_ANON, 'Prefer': 'return=representation' },
-      body:    JSON.stringify(gasto),
+      body:    JSON.stringify(ganho),
     }
   );
-  if (!res.ok) {
-  const erro = await res.text();
-  console.error('Erro Supabase:', erro);
-  throw new Error(erro);
-}
+  if (!res.ok) throw new Error('Erro ao atualizar gasto.');
   const dados = await res.json();
   return dados[0];
+}
+
+async function dbRemoverGanho(id) {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/ganhos?id=eq.${id}`,
+    { method: 'DELETE', headers: { ...headersAuth(), 'apikey': SUPABASE_ANON } }
+  );
+  if (!res.ok) throw new Error('Erro ao remover ganho.');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -312,7 +333,58 @@ async function salvarGasto() {
 }
 
 // ═══════════════════════════════════════════════════════
-// GASTOS — REMOÇÃO
+// GANHOS — CADASTRO
+// ═══════════════════════════════════════════════════════
+
+async function salvarGanho() {
+  const nome   = document.getElementById('ganho-nome').value;
+  const valor  = document.getElementById('ganho-valor').value;
+  const classe = document.getElementById('ganho-classe').value;
+  const data   = document.getElementById('ganho-data').value;
+  const fixo   = document.getElementById('ganho-fixo').checked;
+
+  const eNome   = validarNome(nome);
+  const eValor  = validarValor(valor);
+  const eClasse = validarClasse(classe);
+  const eData   = validarData(data);
+
+  setError('err-ganho-nome',   eNome);
+  setError('err-ganho-valor',  eValor);
+  setError('err-ganho-classe', eClasse);
+  setError('err-ganho-data',   eData);
+
+  if (eNome || eValor || eClasse || eData) return;
+
+  const [y, m, d] = data.split('-');
+  const dataBR = `${d}/${m}/${y}`;
+
+  const novoGanho = {
+    nome:   nome.trim(),
+    valor:  parseFloat(parseFloat(valor).toFixed(2)),
+    classe: classe.trim(),
+    data:   dataBR,
+    fixo,
+  };
+
+  setBloqueado(true);
+  try {
+    const registrado = await dbInserirGanho(novoGanho);
+    historicoGanhos.push(registrado);
+    atualizarStats();
+
+    document.getElementById('ganho-nome').value   = '';
+    document.getElementById('ganho-valor').value  = '';
+    document.getElementById('ganho-classe').value = '';
+    document.getElementById('ganho-data').value   = '';
+    document.getElementById('ganho-fixo').checked = false;
+
+    showToast(`✔ "${nome.trim()}" cadastrado como ganho!`, 'success');
+  } catch {
+    showToast('Erro ao salvar ganho. Verifique sua conexão.', 'danger');
+  } finally {
+    setBloqueado(false);
+  }
+}
 // ═══════════════════════════════════════════════════════
 
 function renderListaRemover() {
@@ -352,9 +424,13 @@ function abrirModal(id, nome) {
 function fecharModal() {
   idRemover = null;
   document.getElementById('modal-overlay').classList.remove('open');
+  delete document.getElementById('modal-overlay').dataset.tipo;
 }
 
 async function confirmarRemocao() {
+  const tipo = document.getElementById('modal-overlay').dataset.tipo;
+  if (tipo === 'ganho') { await confirmarRemocaoGanho(); return; }
+
   if (idRemover === null) return;
 
   const gasto = historico.find(g => g.id === idRemover);
@@ -477,10 +553,9 @@ async function confirmarEdicao() {
     renderListaEditar();
     atualizarStats();
     showToast(`✔ "${gastoAtualizado.nome}" atualizado com sucesso!`, 'success');
-  } catch (erro) {
-  console.error('Erro na edição:', erro);
-  showToast('Erro ao atualizar. Verifique o console.', 'danger');
-} {
+  } catch {
+    showToast('Erro ao atualizar. Verifique sua conexão.', 'danger');
+  } finally {
     setBloqueado(false);
   }
 }
@@ -522,12 +597,109 @@ function renderRelatorio() {
 }
 
 function atualizarStats() {
-  const total  = historico.reduce((s, g) => s + Number(g.valor), 0);
-  const maxVal = historico.length ? Math.max(...historico.map(g => Number(g.valor))) : 0;
+  const totalGastos = historico.reduce((s, g) => s + Number(g.valor), 0);
+  const totalGanhos = historicoGanhos.reduce((s, g) => s + Number(g.valor), 0);
+  const maxVal      = historico.length ? Math.max(...historico.map(g => Number(g.valor))) : 0;
+  const balanco     = totalGanhos - totalGastos;
 
   document.getElementById('stat-total').textContent = `R$ ${formatVal(total)}`;
   document.getElementById('stat-count').textContent = historico.length;
   document.getElementById('stat-max').textContent   = `R$ ${formatVal(maxVal)}`;
+
+  // ─── LÓGICA DE ALERTA VISUAL CYBERPUNK ───
+  const cardTotal = document.getElementById('stat-total').parentElement; 
+  const cardLimite = document.getElementById('card-limite');
+
+  // Remove classes antigas para recalcular
+  if (cardTotal) cardTotal.classList.remove('alerta-atencao', 'alerta-critico');
+  if (cardLimite) cardLimite.classList.remove('alerta-atencao', 'alerta-critico');
+
+  // Se houver um limite definido maior que zero, testa as regras
+  if (limiteMensal > 0) {
+    const percentualGasto = (total / limiteMensal) * 100;
+
+    if (percentualGasto >= 100) {
+      // Estourou o limite! (Vermelho Pulsante)
+      if (cardTotal) cardTotal.classList.add('alerta-critico');
+      if (cardLimite) cardLimite.classList.add('alerta-critico');
+      showToast('⚠️ ALERTA DE SISTEMA: Limite de gastos excedido!', 'danger');
+    } else if (percentualGasto >= 80) {
+      // Próximo do limite! (Laranja)
+      if (cardTotal) cardTotal.classList.add('alerta-atencao');
+      if (cardLimite) cardLimite.classList.add('alerta-atencao');
+    }
+  }
+  document.getElementById('stat-total').textContent  = `R$ ${formatVal(totalGastos)}`;
+  document.getElementById('stat-count').textContent  = historico.length;
+  document.getElementById('stat-max').textContent    = `R$ ${formatVal(maxVal)}`;
+
+  const elBalanco = document.getElementById('stat-balanco');
+  if (elBalanco) {
+    elBalanco.textContent  = `R$ ${formatVal(balanco)}`;
+    elBalanco.style.color  = balanco >= 0 ? 'var(--success)' : 'var(--danger)';
+  }
+}
+
+// ─── Remoção de Ganhos ────────────────────────────────
+function renderListaRemoverGanho() {
+  const cont = document.getElementById('lista-remover-ganho');
+  if (!cont) return;
+
+  if (!historicoGanhos.length) {
+    cont.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⬡</div>
+        <div class="empty-text">Nenhum ganho para remover</div>
+      </div>`;
+    return;
+  }
+
+  cont.innerHTML = historicoGanhos.map(g => `
+    <div class="report-card">
+      <div class="report-row">
+        <div>
+          <div class="report-name">${escHtml(g.nome)} ${g.fixo ? '<span class="badge-fixo">FIXO</span>' : ''}</div>
+          <div class="report-meta">${escHtml(g.classe)} &nbsp;·&nbsp; ${g.data}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:14px">
+          <span class="val-cell val-ganho">R$ ${formatVal(Number(g.valor))}</span>
+          <button class="btn-remove" onclick="abrirModalGanho(${g.id}, '${escHtml(g.nome)}')">✕ Remover</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+let idRemoverGanho = null;
+
+function abrirModalGanho(id, nome) {
+  idRemoverGanho = id;
+  document.getElementById('modal-nome').textContent = nome;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.getElementById('modal-overlay').dataset.tipo = 'ganho';
+}
+
+async function confirmarRemocaoGanho() {
+  if (idRemoverGanho === null) return;
+
+  const ganho = historicoGanhos.find(g => g.id === idRemoverGanho);
+  const nome  = ganho?.nome ?? '';
+
+  setBloqueado(true);
+  try {
+    await dbRemoverGanho(idRemoverGanho);
+    historicoGanhos = historicoGanhos.filter(g => g.id !== idRemoverGanho);
+    idRemoverGanho  = null;
+    fecharModal();
+    renderListaRemoverGanho();
+    atualizarStats();
+    showToast(`✔ "${nome}" removido dos ganhos!`, 'danger');
+  } catch {
+    showToast('Erro ao remover ganho. Verifique sua conexão.', 'danger');
+    fecharModal();
+  } finally {
+    setBloqueado(false);
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -539,9 +711,9 @@ function showView(view, btn) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('view-' + view).classList.add('active');
   btn.classList.add('active');
-  if (view === 'remover')   renderListaRemover();
-  if (view === 'relatorio') renderRelatorio();
-  if (view === 'editar')    renderListaEditar();
+  if (view === 'remover')       renderListaRemover();
+  if (view === 'remover-ganho') renderListaRemoverGanho();
+  if (view === 'relatorio')     renderRelatorio();
 }
 
 function setBloqueado(estado) {
@@ -584,7 +756,51 @@ function escHtml(s) {
     .replace(/>/g, '&gt;');
 }
 
+// Carrega o limite salvo no LocalStorage para o e-mail do usuário atual
+function carregarLimiteSalvo() {
+  const emailAtivo = document.getElementById('user-email-display').textContent;
+  const limiteSalvo = localStorage.getItem(`limite_${emailAtivo}`);
+  
+  if (limiteSalvo) {
+    limiteMensal = parseFloat(limiteSalvo);
+    document.getElementById('inp-limite').value = limiteMensal;
+  } else {
+    limiteMensal = 0;
+    document.getElementById('inp-limite').value = '';
+  }
+  const elStat = document.getElementById('stat-limite');
+  if (elStat) elStat.textContent = `R$ ${formatVal(limiteMensal)}`;
+}
+
+// Salva o limite definido pelo usuário
+function salvarLimiteMensal() {
+  const valorInput = document.getElementById('inp-limite').value;
+  const emailAtivo = document.getElementById('user-email-display').textContent;
+  
+  if (valorInput === '' || isNaN(valorInput) || parseFloat(valorInput) < 0) {
+    showToast('Informe um valor de limite válido.', 'danger');
+    return;
+  }
+  
+  limiteMensal = parseFloat(valorInput);
+  localStorage.setItem(`limite_${emailAtivo}`, limiteMensal);
+  
+  const elStat = document.getElementById('stat-limite');
+  if (elStat) elStat.textContent = `R$ ${formatVal(limiteMensal)}`;
+  
+  atualizarStats(); // Revalida as cores dos cards imediatamente
+  showToast('✔ Limite atualizado com sucesso!', 'success');
+}
+
 // ─── Event Listeners ──────────────────────────────────
+
+// Enter no formulário de ganhos
+['ganho-nome', 'ganho-valor', 'ganho-classe', 'ganho-data'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('keydown', e => {
+    if (e.key === 'Enter') salvarGanho();
+  });
+});
 
 // Enter no formulário de gastos
 ['inp-nome', 'inp-valor', 'inp-classe', 'inp-data'].forEach(id => {
@@ -607,9 +823,4 @@ document.getElementById('reg-confirma').addEventListener('keydown', e => {
 // Fechar modal clicando fora
 document.getElementById('modal-overlay').addEventListener('click', function (e) {
   if (e.target === this) fecharModal();
-});
-
-// Fechar modal de edição clicando fora
-document.getElementById('modal-editar-overlay').addEventListener('click', function (e) {
-  if (e.target === this) fecharModalEditar();
 });
