@@ -742,52 +742,6 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
   box-shadow: 0 0 12px var(--danger-glow);
 }
 
-.btn-edit {
-  background: transparent;
-  border: 1px solid rgba(0,212,255,0.3);
-  color: var(--cyan);
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  padding: 5px 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-edit:hover {
-  border-color: var(--cyan);
-  background: rgba(0,212,255,0.08);
-  box-shadow: 0 0 10px rgba(0,212,255,0.2);
-}
-
-.btn-confirm-edit {
-  background: transparent;
-  border: 1px solid var(--cyan);
-  color: var(--cyan);
-  font-family: 'Orbitron', monospace;
-  font-size: 11px;
-  letter-spacing: 0.2em;
-  padding: 10px 20px;
-  cursor: pointer;
-  transition: all 0.2s;
-  flex: 1;
-}
-
-.btn-confirm-edit:hover {
-  background: rgba(0,212,255,0.1);
-  box-shadow: 0 0 12px rgba(0,212,255,0.2);
-}
-
-/* Modal de edição — título em ciano */
-#modal-editar-overlay .modal h3 {
-  color: var(--cyan);
-}
-
-/* Modal de edição — largura maior para o formulário */
-#modal-editar-overlay .modal {
-  max-width: 520px;
-}
-
 /* ─── Detalhe de canto ───────────────────────────────── */
 .corner-tl {
   position: absolute;
@@ -1043,4 +997,100 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
     box-shadow: 0 0 18px rgba(255, 0, 60, 0.5);
     background: rgba(255, 0, 60, 0.08);
   }
+}
+
+/* ─── Ganhos ──────────────────────────────────────────── */
+.nav-btn-ganho {
+  border-color: rgba(0, 255, 136, 0.3);
+  color: var(--success);
+}
+
+.nav-btn-ganho:hover,
+.nav-btn-ganho.active {
+  background: rgba(0, 255, 136, 0.08);
+  border-color: var(--success);
+  color: var(--success);
+  box-shadow: 0 0 12px rgba(0, 255, 136, 0.2);
+}
+
+.nav-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.08);
+  margin: 8px 0;
+}
+
+.stat-card-balanco {
+  border-color: rgba(0, 255, 136, 0.2);
+}
+
+.val-ganho {
+  color: var(--success) !important;
+}
+
+.badge-fixo {
+  display: inline-block;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  padding: 2px 6px;
+  background: rgba(0, 255, 136, 0.12);
+  color: var(--success);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: 2px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.btn-ganho {
+  background: linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,255,136,0.05));
+  border-color: var(--success);
+  color: var(--success);
+  box-shadow: 0 0 20px rgba(0,255,136,0.15);
+}
+
+.btn-ganho:hover {
+  background: linear-gradient(135deg, rgba(0,255,136,0.25), rgba(0,255,136,0.1));
+  box-shadow: 0 0 30px rgba(0,255,136,0.25);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  padding: 8px 0;
+}
+
+.checkbox-label input[type="checkbox"] {
+  display: none;
+}
+
+.checkbox-custom {
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(0, 255, 136, 0.4);
+  background: transparent;
+  display: inline-block;
+  position: relative;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkbox-custom {
+  background: rgba(0, 255, 136, 0.2);
+  border-color: var(--success);
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkbox-custom::after {
+  content: '✔';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 10px;
+  color: var(--success);
 }
