@@ -7,10 +7,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="style.css"/>
   <link rel="icon" type="image/png" href="favicon.ico"/>
+  <link rel="stylesheet" href="index_snippet.html">
+  
+  <link rel="stylesheet" href="filters.css">
 </head>
 <body>
-
-  <!-- ═══════════════════════════════════════════════
+ <!-- ═══════════════════════════════════════════════
        TELA DE AUTENTICAÇÃO (login / cadastro)
   ════════════════════════════════════════════════ -->
   <div id="tela-auth" class="auth-overlay">
@@ -21,14 +23,12 @@
         <h1 class="auth-title">FINANCE CONTROL</h1>
         <p class="auth-sub">Sistema de Controle de Gastos</p>
       </div>
-
       <!-- Abas Login / Cadastro -->
       <div class="auth-tabs">
         <button class="auth-tab active" onclick="trocarAba('login', this)">Entrar</button>
         <button class="auth-tab" onclick="trocarAba('cadastro-conta', this)">Criar Conta</button>
       </div>
-
-      <!-- Formulário Login -->
+       <!-- Formulário Login -->
       <div id="form-login" class="auth-form active">
         <div class="form-group">
           <label>E-mail</label>
@@ -43,7 +43,6 @@
         <div class="error-msg auth-error" id="err-login-geral"></div>
         <button class="btn-auth" id="btn-login" onclick="fazerLogin()">⬡ &nbsp; Entrar</button>
       </div>
-
       <!-- Formulário Criar Conta -->
       <div id="form-cadastro-conta" class="auth-form">
         <div class="form-group">
@@ -67,13 +66,11 @@
 
     </div>
   </div>
-
-  <!-- ═══════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════
        APLICAÇÃO PRINCIPAL (visível após login)
   ════════════════════════════════════════════════ -->
   <div id="tela-app" class="app" style="display:none">
-
-    <!-- HEADER -->
+<!-- HEADER -->
     <header>
       <div class="header-line">
         <h1>⬡ FINANCE CONTROL SYSTEM ⬡</h1>
@@ -84,8 +81,7 @@
         <button class="btn-logout" onclick="fazerLogout()">Sair</button>
       </div>
     </header>
-
-    <!-- STATS -->
+<!-- STATS -->
     <div class="stats-bar">
       <div class="stat-card">
         <div class="stat-label">Total Acumulado</div>
@@ -349,8 +345,7 @@
         <div class="stat-value" id="stat-max">R$ 0,00</div>
       </div>
     </div>
-
-    <!-- MAIN GRID -->
+ <!-- MAIN GRID -->
     <div class="main-grid">
 
       <nav class="side-panel">
@@ -370,16 +365,7 @@
 
       <div class="content-panel">
         <div class="corner-tl"></div>
-<!-- VIEW: Limite -->
-        <div class="limit-config-box">
-   <label for="inp-limite">DEFINIR LIMITE MENSAL (R$):</label>
-    <div class="limit-input-group">
-     <input type="number" id="inp-limite" placeholder="Ex: 1500.00" step="0.01">
-      <button onclick="salvarLimiteMensal()">DEFINIR</button>
-      </div>
-      </div>
-
-        <!-- VIEW: CADASTRO -->
+<!-- VIEW: CADASTRO -->
         <div id="view-cadastro" class="view active">
           <div class="panel-header">
             <div class="panel-title">◈ Novo Gasto</div>
@@ -398,7 +384,16 @@
               </div>
               <div class="form-group">
                 <label for="inp-classe">Categoria</label>
-                <input type="text" id="inp-classe" placeholder="Ex: Mercado, Lazer..."/>
+                <select id="inp-classe" class="filtro-input filtro-select">
+                  <option value="" disabled selected>Selecione uma categoria...</option>
+                  <option value="Alimentação">Alimentação</option>
+                  <option value="Transporte">Transporte</option>
+                  <option value="Lazer">Lazer</option>
+                  <option value="Saúde">Saúde</option>
+                  <option value="Moradia">Moradia</option>
+                  <option value="Educação">Educação</option>
+                  <option value="Outros">Outros</option>
+                </select>
                 <div class="error-msg" id="err-classe"></div>
               </div>
               <div class="form-group">
@@ -412,8 +407,7 @@
             </div>
           </div>
         </div>
-
-        <!-- VIEW: REMOVER -->
+<!-- VIEW: REMOVER -->
         <div id="view-remover" class="view">
           <div class="panel-header">
             <div class="panel-title">◈ Remover Gasto</div>
@@ -422,113 +416,36 @@
             <div id="lista-remover"></div>
           </div>
         </div>
-
-        <!-- VIEW: EDITAR -->
-        <div id="view-editar" class="view">
-          <div class="panel-header">
-            <div class="panel-title">◈ Editar Gasto</div>
-          </div>
-          <div class="panel-body">
-            <div id="lista-editar"></div>
-          </div>
-        </div>
-
-        <!-- VIEW: RELATÓRIO -->
+ <!-- VIEW: RELATÓRIO -->
         <div id="view-relatorio" class="view">
-          <!--
-  ══════════════════════════════════════════════════════════════════
-  INSTRUÇÕES PARA index.html  —  Issue: Filtros Avançados e Busca
-  ══════════════════════════════════════════════════════════════════
-
-  PASSO 1 ─ Adicione o bloco <link> no <head> (junto com os outros links CSS):
-  ───────────────────────────────────────────────────────────────────────────
-  <link rel="stylesheet" href="filters.css">
-
-  ══════════════════════════════════════════════════════════════════
-  PASSO 2 ─ Cole o painel de filtros ACIMA da tabela de relatórios.
-            Localize a sua <table> de relatórios e cole ANTES dela:
-  ══════════════════════════════════════════════════════════════════
--->
-
-
-
-<!--
-  ══════════════════════════════════════════════════════════════════
-  PASSO 3 ─ Certifique-se de que sua <tbody> tem o id correto:
-  ══════════════════════════════════════════════════════════════════
-
-  <table>
-    <thead> ... </thead>
-    <tbody id="relatorio-tbody"> ← este id é obrigatório
-    </tbody>
-  </table>
-
-  E que o elemento que exibe o total tenha:
-    id="relatorio-total"
-
-  ══════════════════════════════════════════════════════════════════
-  PASSO 4 ─ Adicione os scripts no fim do <body>, NESTA ORDEM:
-  ══════════════════════════════════════════════════════════════════
-
-  <script src="app.js"></script>       ← já existia
-  <script src="filters.js"></script>   ← adicionar após app.js
-
--->
-
           <div class="panel-header">
             <div class="panel-title">◈ Relatório de Gastos</div>
           </div>
           <div class="panel-body">
-            <!-- FILTROS AVANÇADOS ─ início -->
-<div class="filtros-painel">
-  <div class="filtros-header">
-    <span class="filtros-titulo">◈ FILTROS</span>
-    <button id="filtros-limpar" class="filtros-btn-limpar">✕ Limpar</button>
-  </div>
+            
+            <div class="filtros-painel">
+              <div class="filtros-header">
+                <span class="filtros-titulo">◈ FILTRAR RELATÓRIO</span>
+                <button id="filtros-limpar" class="filtros-btn-limpar">✕ Limpar</button>
+              </div>
 
-  <div class="filtros-grid">
-
-    <!-- Busca por nome -->
-    <div class="filtro-grupo">
-      <label class="filtro-label" for="filtro-nome">BUSCAR</label>
-      <div class="filtro-input-wrapper">
-        <span class="filtro-icone">⌕</span>
-        <input
-          type="text"
-          id="filtro-nome"
-          class="filtro-input"
-          placeholder="Nome do gasto..."
-          autocomplete="off"
-        />
-      </div>
-    </div>
-
-    <!-- Filtro por categoria -->
-    <div class="filtro-grupo">
-      <label class="filtro-label" for="filtro-categoria">CATEGORIA</label>
-      <div class="filtro-input-wrapper">
-        <select id="filtro-categoria" class="filtro-input filtro-select">
-          <option value="">Todas</option>
-          <!-- Opções populadas dinamicamente pelo filters.js -->
-        </select>
-      </div>
-    </div>
-
-    <!-- Filtro por mês/ano -->
-    <div class="filtro-grupo">
-      <label class="filtro-label" for="filtro-mes">MÊS / ANO</label>
-      <div class="filtro-input-wrapper">
-        <input
-          type="month"
-          id="filtro-mes"
-          class="filtro-input"
-        />
-      </div>
-    </div>
-
-  </div><!-- /.filtros-grid -->
-</div><!-- /.filtros-painel / FILTROS AVANÇADOS ─ fim -->
-            <table class="expense-table" id="tabela-relatorio">
+              <div class="filtros-grid" style="grid-template-columns: 1fr;">
+                <div class="filtro-grupo">
+                  <label class="filtro-label" for="filtro-categoria">CATEGORIA</label>
+                  <div class="filtro-input-wrapper">
+                    <select id="filtro-categoria" class="filtro-input filtro-select">
+                      <option value="">Todas as Categorias</option>
+                      <option value="Alimentação">Alimentação</option>
+                      <option value="Transporte">Transporte</option>
+                      <option value="Lazer">Lazer</option>
+                      <option value="Saúde">Saúde</option>
+                      <option value="Moradia">Moradia</option>
+                      <option value="Educação">Educação</option>
+                      <option value="Outros">Outros</option>
+                    </select>
+                  </div>
+                </div>
+              </div></div><table class="expense-table" id="tabela-relatorio">
               <thead>
                 <tr>
                   <th>Nome</th>
@@ -537,14 +454,14 @@
                   <th>Data</th>
                 </tr>
               </thead>
-              
               <tbody id="relatorio-tbody"></tbody>
-              
             </table>
+            
             <div class="total-row" id="total-row-rel">
               <span class="total-label">Total Acumulado</span>
               <span class="total-value" id="total-rel">R$ 0,00</span>
             </div>
+            
             <div id="empty-relatorio" class="empty-state" style="display:none">
               <div class="empty-icon">⬡</div>
               <div class="empty-text">Nenhum gasto cadastrado ainda</div>
@@ -552,13 +469,9 @@
           </div>
         </div>
 
-      </div><!-- /content-panel -->
-    </div><!-- /main-grid -->
-  </div><!-- /app -->
-
-  <!-- MODAL: CONFIRMAR REMOÇÃO -->
-  <div class="modal-overlay" id="modal-overlay">
+      </div></div></div><div class="modal-overlay" id="modal-overlay">
     <div class="modal">
+       <!-- MODAL: CONFIRMAR REMOÇÃO -->
       <h3>⚠ CONFIRMAR REMOÇÃO</h3>
       <p>Deseja remover o gasto: <strong id="modal-nome"></strong>?<br/>Esta ação não poderá ser desfeita.</p>
       <div class="modal-actions">
@@ -568,40 +481,6 @@
     </div>
   </div>
 
-  <!-- MODAL: EDITAR GASTO -->
-  <div class="modal-overlay" id="modal-editar-overlay">
-    <div class="modal">
-      <h3>✎ EDITAR GASTO</h3>
-      <div class="form-grid">
-        <div class="form-group">
-          <label for="edit-nome">Nome do Produto</label>
-          <input type="text" id="edit-nome" placeholder="Ex: Arroz, Boneca..."/>
-          <div class="error-msg" id="err-edit-nome"></div>
-        </div>
-        <div class="form-group">
-          <label for="edit-valor">Valor (R$)</label>
-          <input type="number" id="edit-valor" placeholder="Ex: 50.30" step="0.01" min="0.01"/>
-          <div class="error-msg" id="err-edit-valor"></div>
-        </div>
-        <div class="form-group">
-          <label for="edit-classe">Categoria</label>
-          <input type="text" id="edit-classe" placeholder="Ex: Mercado, Lazer..."/>
-          <div class="error-msg" id="err-edit-classe"></div>
-        </div>
-        <div class="form-group">
-          <label for="edit-data">Data</label>
-          <input type="date" id="edit-data"/>
-          <div class="error-msg" id="err-edit-data"></div>
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn-cancel" onclick="fecharModalEditar()">Cancelar</button>
-        <button class="btn-confirm-edit" onclick="confirmarEdicao()">Salvar Alterações</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- TOAST -->
   <div class="toast" id="toast"></div>
 
   <script src="app.js"></script>
