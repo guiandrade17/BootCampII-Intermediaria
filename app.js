@@ -217,7 +217,11 @@ async function dbAtualizar(id, gasto) {
       body:    JSON.stringify(gasto),
     }
   );
-  if (!res.ok) throw new Error('Erro ao atualizar gasto.');
+  if (!res.ok) {
+  const erro = await res.text();
+  console.error('Erro Supabase:', erro);
+  throw new Error(erro);
+}
   const dados = await res.json();
   return dados[0];
 }
@@ -473,9 +477,10 @@ async function confirmarEdicao() {
     renderListaEditar();
     atualizarStats();
     showToast(`✔ "${gastoAtualizado.nome}" atualizado com sucesso!`, 'success');
-  } catch {
-    showToast('Erro ao atualizar. Verifique sua conexão.', 'danger');
-  } finally {
+  } catch (erro) {
+  console.error('Erro na edição:', erro);
+  showToast('Erro ao atualizar. Verifique o console.', 'danger');
+} {
     setBloqueado(false);
   }
 }
