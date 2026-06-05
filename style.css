@@ -960,3 +960,87 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
   header h1            { font-size: 16px; }
   .auth-box            { padding: 28px 20px; }
 }
+/* ───────────────────────────────────────────────────────
+   INTEGRAÇÃO: FUNCIONALIDADE DE LIMITE DE GASTOS (BUDGET)
+   ─────────────────────────────────────────────────────── */
+
+/* Painel de configuração do limite */
+.limit-config-box {
+  margin: 20px 0;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px dashed #333;
+  border-radius: 4px;
+}
+.limit-config-box label {
+  font-size: 11px;
+  color: #ffa500; 
+  letter-spacing: 1.5px;
+  display: block;
+  margin-bottom: 8px;
+  font-family: monospace;
+}
+.limit-input-group {
+  display: flex;
+  gap: 10px;
+}
+.limit-input-group input {
+  background: #070708;
+  border: 1px solid #222;
+  color: #fff;
+  padding: 8px;
+  font-family: monospace;
+  flex: 1;
+}
+.limit-input-group input:focus {
+  outline: none;
+  border-color: #ffa500;
+}
+.limit-input-group button {
+  background: transparent;
+  border: 1px solid #ffa500;
+  color: #ffa500;
+  cursor: pointer;
+  padding: 8px 15px;
+  font-size: 11px;
+  font-family: monospace;
+  transition: all 0.2s ease;
+}
+.limit-input-group button:hover {
+  background: rgba(255, 165, 0, 0.1);
+  box-shadow: 0 0 8px rgba(255, 165, 0, 0.3);
+}
+
+/* ─── Estados de Alerta dos Cards ─── */
+
+/* Alerta Amarelo/Laranja (Gasto >= 80%) */
+.stat-card.alerta-atencao {
+  border-color: #ff9900 !important;
+  box-shadow: 0 0 12px rgba(255, 153, 0, 0.25) !important;
+}
+.stat-card.alerta-atencao .stat-val {
+  color: #ff9900 !important;
+  text-shadow: 0 0 6px rgba(255, 153, 0, 0.6) !important;
+}
+
+/* Alerta Vermelho Pulsante (Gasto >= 100%) */
+.stat-card.alerta-critico {
+  border-color: #ff003c !important;
+  animation: pulso-alarme-cyber 1.5s infinite alternate !important;
+}
+.stat-card.alerta-critico .stat-val {
+  color: #ff003c !important;
+  text-shadow: 0 0 10px rgba(255, 0, 60, 0.8) !important;
+}
+
+/* Animação do Alarme Crítico */
+@keyframes pulso-alarme-cyber {
+  0% {
+    box-shadow: 0 0 4px rgba(255, 0, 60, 0.2);
+    background: rgba(255, 0, 60, 0.02);
+  }
+  100% {
+    box-shadow: 0 0 18px rgba(255, 0, 60, 0.5);
+    background: rgba(255, 0, 60, 0.08);
+  }
+}

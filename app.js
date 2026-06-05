@@ -29,7 +29,7 @@ function headersAuth() {
 let historico = [];
 let idRemover = null;
 let idEditar  = null; // ID do gasto em edição
-
+let limiteMensal = 0;
 // ═══════════════════════════════════════════════════════
 // AUTENTICAÇÃO
 // ═══════════════════════════════════════════════════════
@@ -157,6 +157,7 @@ async function entrarNoApp(email) {
   document.getElementById('tela-auth').style.display = 'none';
   document.getElementById('tela-app').style.display  = 'block';
   document.getElementById('user-email-display').textContent = email;
+  carregarLimiteSalvo();
 
   // Carrega os gastos do usuário logado
   ['stat-total', 'stat-max'].forEach(id => {
@@ -523,6 +524,30 @@ function atualizarStats() {
   document.getElementById('stat-total').textContent = `R$ ${formatVal(total)}`;
   document.getElementById('stat-count').textContent = historico.length;
   document.getElementById('stat-max').textContent   = `R$ ${formatVal(maxVal)}`;
+
+  // ─── LÓGICA DE ALERTA VISUAL CYBERPUNK ───
+  const cardTotal = document.getElementById('stat-total').parentElement; 
+  const cardLimite = document.getElementById('card-limite');
+
+  // Remove classes antigas para recalcular
+  if (cardTotal) cardTotal.classList.remove('alerta-atencao', 'alerta-critico');
+  if (cardLimite) cardLimite.classList.remove('alerta-atencao', 'alerta-critico');
+
+  // Se houver um limite definido maior que zero, testa as regras
+  if (limiteMensal > 0) {
+    const percentualGasto = (total / limiteMensal) * 100;
+
+    if (percentualGasto >= 100) {
+      // Estourou o limite! (Vermelho Pulsante)
+      if (cardTotal) cardTotal.classList.add('alerta-critico');
+      if (cardLimite) cardLimite.classList.add('alerta-critico');
+      showToast('⚠️ ALERTA DE SISTEMA: Limite de gastos excedido!', 'danger');
+    } else if (percentualGasto >= 80) {
+      // Próximo do limite! (Laranja)
+      if (cardTotal) cardTotal.classList.add('alerta-atencao');
+      if (cardLimite) cardLimite.classList.add('alerta-atencao');
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -577,6 +602,42 @@ function escHtml(s) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+}
+
+// Carrega o limite salvo no LocalStorage para o e-mail do usuário atual
+function carregarLimiteSalvo() {
+  const emailAtivo = document.getElementById('user-email-display').textContent;
+  const limiteSalvo = localStorage.getItem(`limite_${emailAtivo}`);
+  
+  if (limiteSalvo) {
+    limiteMensal = parseFloat(limiteSalvo);
+    document.getElementById('inp-limite').value = limiteMensal;
+  } else {
+    limiteMensal = 0;
+    document.getElementById('inp-limite').value = '';
+  }
+  const elStat = document.getElementById('stat-limite');
+  if (elStat) elStat.textContent = `R$ ${formatVal(limiteMensal)}`;
+}
+
+// Salva o limite definido pelo usuário
+function salvarLimiteMensal() {
+  const valorInput = document.getElementById('inp-limite').value;
+  const emailAtivo = document.getElementById('user-email-display').textContent;
+  
+  if (valorInput === '' || isNaN(valorInput) || parseFloat(valorInput) < 0) {
+    showToast('Informe um valor de limite válido.', 'danger');
+    return;
+  }
+  
+  limiteMensal = parseFloat(valorInput);
+  localStorage.setItem(`limite_${emailAtivo}`, limiteMensal);
+  
+  const elStat = document.getElementById('stat-limite');
+  if (elStat) elStat.textContent = `R$ ${formatVal(limiteMensal)}`;
+  
+  atualizarStats(); // Revalida as cores dos cards imediatamente
+  showToast('✔ Limite atualizado com sucesso!', 'success');
 }
 
 // ─── Event Listeners ──────────────────────────────────
