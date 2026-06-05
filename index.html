@@ -111,6 +111,9 @@
         <button class="nav-btn" onclick="showView('remover', this)">
           <span class="icon">✕</span> Remover Gasto
         </button>
+        <button class="nav-btn" onclick="showView('editar', this)">
+          <span class="icon">✎</span> Editar Gasto
+        </button>
         <button class="nav-btn" onclick="showView('relatorio', this)">
           <span class="icon">▤</span> Relatório
         </button>
@@ -163,6 +166,16 @@
           </div>
         </div>
 
+        <!-- VIEW: EDITAR -->
+        <div id="view-editar" class="view">
+          <div class="panel-header">
+            <div class="panel-title">◈ Editar Gasto</div>
+          </div>
+          <div class="panel-body">
+            <div id="lista-editar"></div>
+          </div>
+        </div>
+
         <!-- VIEW: RELATÓRIO -->
         <div id="view-relatorio" class="view">
           <div class="panel-header">
@@ -203,6 +216,39 @@
       <div class="modal-actions">
         <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
         <button class="btn-confirm-remove" onclick="confirmarRemocao()">Remover</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: EDITAR GASTO -->
+  <div class="modal-overlay" id="modal-editar-overlay">
+    <div class="modal">
+      <h3>✎ EDITAR GASTO</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="edit-nome">Nome do Produto</label>
+          <input type="text" id="edit-nome" placeholder="Ex: Arroz, Boneca..."/>
+          <div class="error-msg" id="err-edit-nome"></div>
+        </div>
+        <div class="form-group">
+          <label for="edit-valor">Valor (R$)</label>
+          <input type="number" id="edit-valor" placeholder="Ex: 50.30" step="0.01" min="0.01"/>
+          <div class="error-msg" id="err-edit-valor"></div>
+        </div>
+        <div class="form-group">
+          <label for="edit-classe">Categoria</label>
+          <input type="text" id="edit-classe" placeholder="Ex: Mercado, Lazer..."/>
+          <div class="error-msg" id="err-edit-classe"></div>
+        </div>
+        <div class="form-group">
+          <label for="edit-data">Data</label>
+          <input type="date" id="edit-data"/>
+          <div class="error-msg" id="err-edit-data"></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="fecharModalEditar()">Cancelar</button>
+        <button class="btn-confirm-edit" onclick="confirmarEdicao()">Salvar Alterações</button>
       </div>
     </div>
   </div>

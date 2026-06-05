@@ -742,6 +742,52 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
   box-shadow: 0 0 12px var(--danger-glow);
 }
 
+.btn-edit {
+  background: transparent;
+  border: 1px solid rgba(0,212,255,0.3);
+  color: var(--cyan);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-edit:hover {
+  border-color: var(--cyan);
+  background: rgba(0,212,255,0.08);
+  box-shadow: 0 0 10px rgba(0,212,255,0.2);
+}
+
+.btn-confirm-edit {
+  background: transparent;
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  font-family: 'Orbitron', monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+}
+
+.btn-confirm-edit:hover {
+  background: rgba(0,212,255,0.1);
+  box-shadow: 0 0 12px rgba(0,212,255,0.2);
+}
+
+/* Modal de edição — título em ciano */
+#modal-editar-overlay .modal h3 {
+  color: var(--cyan);
+}
+
+/* Modal de edição — largura maior para o formulário */
+#modal-editar-overlay .modal {
+  max-width: 520px;
+}
+
 /* ─── Detalhe de canto ───────────────────────────────── */
 .corner-tl {
   position: absolute;
