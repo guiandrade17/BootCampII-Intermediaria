@@ -28,6 +28,7 @@ function headersAuth() {
 // ─── Estado global ────────────────────────────────────
 let historico = [];
 let idRemover = null;
+let idEditar  = null; // ID do gasto em edição
 
 // ═══════════════════════════════════════════════════════
 // AUTENTICAÇÃO
@@ -207,6 +208,20 @@ async function dbRemover(id) {
   if (!res.ok) throw new Error('Erro ao remover gasto.');
 }
 
+async function dbAtualizar(id, gasto) {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/${TABELA}?id=eq.${id}`,
+    {
+      method:  'PATCH',
+      headers: { ...headersAuth(), 'apikey': SUPABASE_ANON, 'Prefer': 'return=representation' },
+      body:    JSON.stringify(gasto),
+    }
+  );
+  if (!res.ok) throw new Error('Erro ao atualizar gasto.');
+  const dados = await res.json();
+  return dados[0];
+}
+
 // ═══════════════════════════════════════════════════════
 // VALIDAÇÃO
 // ═══════════════════════════════════════════════════════
@@ -358,6 +373,114 @@ async function confirmarRemocao() {
 }
 
 // ═══════════════════════════════════════════════════════
+// GASTOS — EDIÇÃO
+// ═══════════════════════════════════════════════════════
+
+function renderListaEditar() {
+  const cont = document.getElementById('lista-editar');
+
+  if (!historico.length) {
+    cont.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⬡</div>
+        <div class="empty-text">Nenhum gasto para editar</div>
+      </div>`;
+    return;
+  }
+
+  cont.innerHTML = historico.map(g => `
+    <div class="report-card">
+      <div class="report-row">
+        <div>
+          <div class="report-name">${escHtml(g.nome)}</div>
+          <div class="report-meta">${escHtml(g.classe)} &nbsp;·&nbsp; ${g.data}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:14px">
+          <span class="val-cell">R$ ${formatVal(Number(g.valor))}</span>
+          <button class="btn-edit" onclick="abrirModalEditar(${g.id})">✎ Editar</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function abrirModalEditar(id) {
+  const gasto = historico.find(g => g.id === id);
+  if (!gasto) return;
+
+  idEditar = id;
+
+  // Converte data de DD/MM/YYYY para YYYY-MM-DD (formato do input[type=date])
+  const partes = gasto.data.split('/');
+  const dataInput = partes.length === 3
+    ? `${partes[2]}-${partes[1]}-${partes[0]}`
+    : '';
+
+  document.getElementById('edit-nome').value   = gasto.nome;
+  document.getElementById('edit-valor').value  = gasto.valor;
+  document.getElementById('edit-classe').value = gasto.classe;
+  document.getElementById('edit-data').value   = dataInput;
+
+  // Limpa erros anteriores
+  ['err-edit-nome','err-edit-valor','err-edit-classe','err-edit-data']
+    .forEach(id => setError(id, ''));
+
+  document.getElementById('modal-editar-overlay').classList.add('open');
+}
+
+function fecharModalEditar() {
+  idEditar = null;
+  document.getElementById('modal-editar-overlay').classList.remove('open');
+}
+
+async function confirmarEdicao() {
+  const nome   = document.getElementById('edit-nome').value;
+  const valor  = document.getElementById('edit-valor').value;
+  const classe = document.getElementById('edit-classe').value;
+  const data   = document.getElementById('edit-data').value;
+
+  const eNome   = validarNome(nome);
+  const eValor  = validarValor(valor);
+  const eClasse = validarClasse(classe);
+  const eData   = validarData(data);
+
+  setError('err-edit-nome',   eNome);
+  setError('err-edit-valor',  eValor);
+  setError('err-edit-classe', eClasse);
+  setError('err-edit-data',   eData);
+
+  if (eNome || eValor || eClasse || eData) return;
+
+  const [y, m, d] = data.split('-');
+  const dataBR = `${d}/${m}/${y}`;
+
+  const gastoAtualizado = {
+    nome:   nome.trim(),
+    valor:  parseFloat(parseFloat(valor).toFixed(2)),
+    classe: classe.trim(),
+    data:   dataBR,
+  };
+
+  setBloqueado(true);
+  try {
+    const retorno = await dbAtualizar(idEditar, gastoAtualizado);
+
+    // Atualiza o registro no array local
+    const idx = historico.findIndex(g => g.id === idEditar);
+    if (idx !== -1) historico[idx] = retorno;
+
+    fecharModalEditar();
+    renderListaEditar();
+    atualizarStats();
+    showToast(`✔ "${gastoAtualizado.nome}" atualizado com sucesso!`, 'success');
+  } catch {
+    showToast('Erro ao atualizar. Verifique sua conexão.', 'danger');
+  } finally {
+    setBloqueado(false);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
 // RELATÓRIO E STATS
 // ═══════════════════════════════════════════════════════
 
@@ -413,6 +536,7 @@ function showView(view, btn) {
   btn.classList.add('active');
   if (view === 'remover')   renderListaRemover();
   if (view === 'relatorio') renderRelatorio();
+  if (view === 'editar')    renderListaEditar();
 }
 
 function setBloqueado(estado) {
@@ -478,4 +602,9 @@ document.getElementById('reg-confirma').addEventListener('keydown', e => {
 // Fechar modal clicando fora
 document.getElementById('modal-overlay').addEventListener('click', function (e) {
   if (e.target === this) fecharModal();
+});
+
+// Fechar modal de edição clicando fora
+document.getElementById('modal-editar-overlay').addEventListener('click', function (e) {
+  if (e.target === this) fecharModalEditar();
 });
