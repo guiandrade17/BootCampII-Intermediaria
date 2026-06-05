@@ -103,6 +103,11 @@
         <div class="stat-label">Maior Gasto</div>
         <div class="stat-value" id="stat-max">R$ 0,00</div>
       </div>
+        <div class="stat-card" id="card-limite">
+      <div class="stat-label">LIMITE MENSAL</div>
+      <div class="stat-val" id="stat-limite">R$ 0,00</div>
+      </div>
+      
     </div>
 
     <!-- MAIN GRID -->
@@ -125,6 +130,14 @@
 
       <div class="content-panel">
         <div class="corner-tl"></div>
+<!-- VIEW: Limite -->
+        <div class="limit-config-box">
+   <label for="inp-limite">DEFINIR LIMITE MENSAL (R$):</label>
+    <div class="limit-input-group">
+     <input type="number" id="inp-limite" placeholder="Ex: 1500.00" step="0.01">
+      <button onclick="salvarLimiteMensal()">DEFINIR</button>
+      </div>
+      </div>
 
         <!-- VIEW: CADASTRO -->
         <div id="view-cadastro" class="view active">
