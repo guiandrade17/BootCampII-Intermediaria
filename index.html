@@ -7,10 +7,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="style.css"/>
   <link rel="icon" type="image/png" href="favicon.ico"/>
-  <link rel="stylesheet" href="index_snippet.html">
-  
-  <link rel="stylesheet" href="filters.css">
-
 </head>
 <body>
 
@@ -35,6 +31,250 @@
       <!-- Formulário Login -->
       <div id="form-login" class="auth-form active">
         <div class="form-group">
+          <label>E-mail</label>
+          <input type="email" id="login-email" placeholder="seu@email.com"/>
+          <div class="error-msg" id="err-login-email"></div>
+        </div>
+        <div class="form-group">
+          <label>Senha</label>
+          <input type="password" id="login-senha" placeholder="••••••••"/>
+          <div class="error-msg" id="err-login-senha"></div>
+        </div>
+        <div class="error-msg auth-error" id="err-login-geral"></div>
+        <button class="btn-auth" id="btn-login" onclick="fazerLogin()">⬡ &nbsp; Entrar</button>
+      </div>
+
+      <!-- Formulário Criar Conta -->
+      <div id="form-cadastro-conta" class="auth-form">
+        <div class="form-group">
+          <label>E-mail</label>
+          <input type="email" id="reg-email" placeholder="seu@email.com"/>
+          <div class="error-msg" id="err-reg-email"></div>
+        </div>
+        <div class="form-group">
+          <label>Senha</label>
+          <input type="password" id="reg-senha" placeholder="mínimo 6 caracteres"/>
+          <div class="error-msg" id="err-reg-senha"></div>
+        </div>
+        <div class="form-group">
+          <label>Confirmar Senha</label>
+          <input type="password" id="reg-confirma" placeholder="repita a senha"/>
+          <div class="error-msg" id="err-reg-confirma"></div>
+        </div>
+        <div class="error-msg auth-error" id="err-reg-geral"></div>
+        <button class="btn-auth" id="btn-registrar" onclick="fazerCadastro()">⬡ &nbsp; Criar Conta</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       APLICAÇÃO PRINCIPAL (visível após login)
+  ════════════════════════════════════════════════ -->
+  <div id="tela-app" class="app" style="display:none">
+
+    <!-- HEADER -->
+    <header>
+      <div class="header-line">
+        <h1>⬡ FINANCE CONTROL SYSTEM ⬡</h1>
+      </div>
+      <div class="header-sub">Sistema de Controle de Gastos Pessoais</div>
+      <div class="user-bar">
+        <span class="user-email" id="user-email-display"></span>
+        <button class="btn-logout" onclick="fazerLogout()">Sair</button>
+      </div>
+    </header>
+
+    <!-- STATS -->
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-label">Total Acumulado</div>
+        <div class="stat-value" id="stat-total">R$ 0,00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Gastos Cadastrados</div>
+        <div class="stat-value cyan" id="stat-count">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Maior Gasto</div>
+        <div class="stat-value" id="stat-max">R$ 0,00</div>
+      </div>
+      <div class="stat-card stat-card-balanco">
+        <div class="stat-label">Balanço Financeiro</div>
+        <div class="stat-value" id="stat-balanco">R$ 0,00</div>
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="main-grid">
+
+      <nav class="side-panel">
+        <button class="nav-btn nav-btn-ganho active" onclick="showView('cadastro-ganho', this)">
+          <span class="icon">＋</span> Cadastrar Ganho
+        </button>
+        <button class="nav-btn nav-btn-ganho" onclick="showView('remover-ganho', this)">
+          <span class="icon">✕</span> Remover Ganho
+        </button>
+        <div class="nav-divider"></div>
+        <button class="nav-btn" onclick="showView('cadastro', this)">
+          <span class="icon">＋</span> Cadastrar Gasto
+        </button>
+        <button class="nav-btn" onclick="showView('remover', this)">
+          <span class="icon">✕</span> Remover Gasto
+        </button>
+        <button class="nav-btn" onclick="showView('relatorio', this)">
+          <span class="icon">▤</span> Relatório
+        </button>
+      </nav>
+
+      <div class="content-panel">
+        <div class="corner-tl"></div>
+
+        <!-- VIEW: CADASTRO GANHO -->
+        <div id="view-cadastro-ganho" class="view active">
+          <div class="panel-header">
+            <div class="panel-title">◈ Novo Ganho</div>
+          </div>
+          <div class="panel-body">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="ganho-nome">Descrição do Ganho</label>
+                <input type="text" id="ganho-nome" placeholder="Ex: Salário, Freelance..."/>
+                <div class="error-msg" id="err-ganho-nome"></div>
+              </div>
+              <div class="form-group">
+                <label for="ganho-valor">Valor (R$)</label>
+                <input type="number" id="ganho-valor" placeholder="Ex: 3000.00" step="0.01" min="0.01"/>
+                <div class="error-msg" id="err-ganho-valor"></div>
+              </div>
+              <div class="form-group">
+                <label for="ganho-classe">Categoria</label>
+                <input type="text" id="ganho-classe" placeholder="Ex: Salário, Renda Extra..."/>
+                <div class="error-msg" id="err-ganho-classe"></div>
+              </div>
+              <div class="form-group">
+                <label for="ganho-data">Data</label>
+                <input type="date" id="ganho-data"/>
+                <div class="error-msg" id="err-ganho-data"></div>
+              </div>
+              <div class="form-group full">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="ganho-fixo"/>
+                  <span class="checkbox-custom"></span>
+                  Ganho fixo mensal (ex: salário)
+                </label>
+              </div>
+              <div class="form-group full" style="padding-top:8px">
+                <button class="btn-primary btn-ganho" onclick="salvarGanho()">⬡ &nbsp; Cadastrar Ganho</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW: REMOVER GANHO -->
+        <div id="view-remover-ganho" class="view">
+          <div class="panel-header">
+            <div class="panel-title">◈ Remover Ganho</div>
+          </div>
+          <div class="panel-body">
+            <div id="lista-remover-ganho"></div>
+          </div>
+        </div>
+
+        <!-- VIEW: CADASTRO -->
+        <div id="view-cadastro" class="view active">
+          <div class="panel-header">
+            <div class="panel-title">◈ Novo Gasto</div>
+          </div>
+          <div class="panel-body">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="inp-nome">Nome do Produto</label>
+                <input type="text" id="inp-nome" placeholder="Ex: Arroz, Boneca..."/>
+                <div class="error-msg" id="err-nome"></div>
+              </div>
+              <div class="form-group">
+                <label for="inp-valor">Valor (R$)</label>
+                <input type="number" id="inp-valor" placeholder="Ex: 50.30" step="0.01" min="0.01"/>
+                <div class="error-msg" id="err-valor"></div>
+              </div>
+              <div class="form-group">
+                <label for="inp-classe">Categoria</label>
+                <input type="text" id="inp-classe" placeholder="Ex: Mercado, Lazer..."/>
+                <div class="error-msg" id="err-classe"></div>
+              </div>
+              <div class="form-group">
+                <label for="inp-data">Data</label>
+                <input type="date" id="inp-data"/>
+                <div class="error-msg" id="err-data"></div>
+              </div>
+              <div class="form-group full" style="padding-top:8px">
+                <button class="btn-primary" onclick="salvarGasto()">⬡ &nbsp; Cadastrar Gasto</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW: REMOVER -->
+        <div id="view-remover" class="view">
+          <div class="panel-header">
+            <div class="panel-title">◈ Remover Gasto</div>
+          </div>
+          <div class="panel-body">
+            <div id="lista-remover"></div>
+          </div>
+        </div>
+
+        <!-- VIEW: RELATÓRIO -->
+        <div id="view-relatorio" class="view">
+          <div class="panel-header">
+            <div class="panel-title">◈ Relatório de Gastos</div>
+          </div>
+          <div class="panel-body">
+            <table class="expense-table" id="tabela-relatorio">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Valor</th>
+                  <th>Categoria</th>
+                  <th>Data</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-relatorio"></tbody>
+            </table>
+            <div class="total-row" id="total-row-rel">
+              <span class="total-label">Total Acumulado</span>
+              <span class="total-value" id="total-rel">R$ 0,00</span>
+            </div>
+            <div id="empty-relatorio" class="empty-state" style="display:none">
+              <div class="empty-icon">⬡</div>
+              <div class="empty-text">Nenhum gasto cadastrado ainda</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /content-panel -->
+    </div><!-- /main-grid -->
+  </div><!-- /app -->
+
+  <!-- MODAL: CONFIRMAR REMOÇÃO -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <h3>⚠ CONFIRMAR REMOÇÃO</h3>
+      <p>Deseja remover o gasto: <strong id="modal-nome"></strong>?<br/>Esta ação não poderá ser desfeita.</p>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+        <button class="btn-confirm-remove" onclick="confirmarRemocao()">Remover</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>        <div class="form-group">
           <label>E-mail</label>
           <input type="email" id="login-email" placeholder="seu@email.com"/>
           <div class="error-msg" id="err-login-email"></div>
